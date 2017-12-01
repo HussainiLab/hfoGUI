@@ -241,8 +241,8 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
             if index > 0:
                 self.Graph_label.setText(
-                    "<span style='font-size: 12pt'>Time=%0.1f ms, Total Duration: " % (
-                    mousePoint.x()))
+                    "<span style='font-size: 12pt'>Time=%0.1f ms, Total Duration: %0.1f sec" % (
+                    mousePoint.x(), self.source_duration))
             self.mouse_vLine.setPos(mousePoint.x())
             # self.mouse_hLine.setPos(mousePoint.y())
 

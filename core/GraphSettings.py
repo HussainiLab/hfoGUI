@@ -38,15 +38,15 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.newData.mysignal.connect(self.update_plots)
         self.newData.mouse_signal.connect(self.mouse_slot)
 
-
         self.ActiveSourceSignal = Communicate()
         self.RePlotTFSignal = Communicate()
-
-        self.initialize_attributes()
 
         self.profile_filename = os.path.join(main.SETTINGS_DIR, 'profiles.json')
 
         self.mainWindow = main
+
+        self.initialize_attributes()
+
         self.newData.lr_signal.connect(self.mainWindow.create_lr)
 
         self.mainWindow.vb.mouseDragEvent = self.drag  # overriding the drag event
@@ -287,6 +287,8 @@ class GraphSettingsWindows(QtGui.QWidget):
     def initialize_attributes(self):
         self.active_sources = []
 
+        self.mainWindow.source_duration = None
+
         self.selected_time = None
 
         self.plotting = False
@@ -456,7 +458,6 @@ class GraphSettingsWindows(QtGui.QWidget):
                                  self.mainWindow.windowsize, padding=0)
             self.mainWindow.Graph_axis.setClipToView(True)
             self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
-
 
         elif source == 'MarkPeaks':
             [self.mainWindow.Graph_axis.addItem(pg.InfiniteLine(pos=peak_time, angle=90, movable=False,
@@ -845,6 +846,10 @@ class GraphSettingsWindows(QtGui.QWidget):
                 while self.mainWindow.choice == '':
                     time.sleep(0.1)
                 return
+
+            if self.mainWindow.source_duration is None:
+                self.mainWindow.source_duration = np.float(get_setfile_parameter('duration',
+                                                                                 self.mainWindow.current_set_filename))
 
             if '.eeg' in source_filename or '.egf' in source_filename:
                 if source_filename not in self.loaded_sources.keys():
