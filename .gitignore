@@ -9,6 +9,7 @@ __pycache__/
 # Custom Folders
 settings/
 .idea
+extraneous/
 
 # Distribution / packaging
 .Python

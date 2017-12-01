@@ -466,9 +466,10 @@ class GraphSettingsWindows(QtGui.QWidget):
                                                 pen=(0, 0, 0))) for peak_time in x]
 
         elif source == 'PlotSpikes':
-            [self.mainWindow.Graph_axis.addItem(pg.InfiniteLine(pos=spike_time, angle=90, movable=False,
-                                                bounds=[y[0], y[1]],
-                                                pen=(0, 0, 0))) for spike_time in x]
+            if 'colors' in kwargs.keys():
+                pen = kwargs['colors']
+            vlines = custom_vlines(x, y[0], y[1], pen=pen)
+            self.mainWindow.Graph_axis.addItem(vlines)
 
     def mouse_slot(self, action):
         if action == 'create':
@@ -1052,12 +1053,16 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                         units, available_units = find_unit(os.path.dirname(tetrode_file), [tetrode_file])
                         available_units = available_units[0]
-                        for cell_num in available_units:
+                        spike_times, _, _, _, _, _ = getspikes(tetrode_file)
+
+                        # check if the user separated bad cells from good cells
+                        plottable_units = find_consec(available_units)[0]
+
+                        for cell_num in plottable_units:
                             if cell_num == 0:
                                 continue
 
                             self.cell_labels.append(cell_num)
-                            spike_times, _, _, _, _, _ = getspikes(tetrode_file)
                             cell_spike_times = 1000 * spike_times[np.where((units == cell_num))[1]]
                             self.cell_spike_time_array.append(cell_spike_times)
                             self.spike_color_list.append(self.spike_colors[self.spike_colors_index])
@@ -1079,10 +1084,9 @@ class GraphSettingsWindows(QtGui.QWidget):
                     '''
                     # plots the vertical lines, the InfiniteLine does not plot an array like vlines, so we need to do
                     # a for loop, this method could be significantly slower
-                    self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array([current_cell_raster_minimum,
-                                                                                         current_cell_raster_minimum +
-                                                                                         raster_spike_height]), {})
-
+                    self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
+                        [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
+                                               {'colors': self.spike_color_list[i]})
 
                     current_cell_raster_minimum += raster_spike_height  # increment the minumum height
 
@@ -1594,3 +1598,54 @@ def findfile(filename, search_directory, directory_search_max=3):
     search_directory = os.path.dirname(search_directory)
 
     return filename_fullpath
+
+
+class custom_vlines(pg.GraphicsObject):
+
+    def __init__(self, x, min_y, max_y, pen=None, **kwargs):
+        pg.GraphicsObject.__init__(self)
+
+        self.x = x
+        self.min_y = min_y
+        self.max_y = max_y
+
+        self.kwargs = kwargs
+
+        self.maxRange = [None, None]
+        self.moving = False
+        self.movable = False
+        self.mouseHovering = False
+
+        if pen is None:
+            self.pen = (200, 200, 100)
+
+        self.setPen(pen, **kwargs)
+        self.currentPen = self.pen
+
+    def setBounds(self, bounds):
+        self.maxRange = bounds
+        self.setValue(self.value())
+
+    def setPen(self, *args, **kwargs):
+        self.pen = pg.fn.mkPen(*args, **kwargs)
+        if not self.mouseHovering:
+            self.currentPen = self.pen
+            self.update()
+
+    def setHoverPen(self, *args, **kwargs):
+        self.hoverPen = pg.fn.mkPen(*args, **kwargs)
+
+    def boundingRect(self):
+        br = self.viewRect()
+        return br.normalized()
+
+    def paint(self, p, *args):
+        p.setPen(self.currentPen)
+        for value in self.x:
+            p.drawLine(pg.Point(value, self.min_y), pg.Point(value, self.max_y))
+
+    def dataBounds(self, axis, frac=1.0, orthoRange=None):
+        if axis == 0:
+            return None   ## x axis should never be auto-scaled
+        else:
+            return (0, 0)
