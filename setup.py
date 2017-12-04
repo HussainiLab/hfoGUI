@@ -12,9 +12,11 @@ base = None
 #    base = "Win32GUI"
 
 additional_imports = ['numpy.core._methods', 'numpy.lib.format', "matplotlib.backends.backend_tkagg",
-                      'scipy.spatial']
+                      'scipy.spatial', 'tkinter.filedialog'
+                      # 'pyqtgraph.debug'
+                      ]
 
-packages = ['matplotlib', 'scipy', 'scipy.spatial']
+packages = ['matplotlib', 'scipy', 'scipy.spatial', 'pyqtgraph']
 
 setup(name="hfoGUIV2",
       version="1.0",
