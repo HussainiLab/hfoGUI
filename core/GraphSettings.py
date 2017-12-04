@@ -305,6 +305,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.plotting = False
         self.loaded_sources = {}
         self.cell_spike_time_array = []
+        self.tetrode_spikes = {}
         self.cell_labels = []
 
     def Progress(self, string):
@@ -491,6 +492,8 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.mainWindow.Graph_axis.setXRange(self.mainWindow.current_time, self.mainWindow.current_time +
                                  self.mainWindow.windowsize, padding=0)
             self.mainWindow.Graph_axis.setClipToView(True)
+            self.mainWindow.Graph_axis.showLabel('left', False)
+            self.mainWindow.Graph_axis.showAxis('left', False)
 
             if hasattr(self.mainWindow, 'graph_max'):
                 self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
@@ -510,7 +513,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         elif source == 'PlotSpikes':
             if 'colors' in kwargs.keys():
                 pen = kwargs['colors']
-            vlines = custom_vlines(x, y[0], y[1], pen=pen)
+            vlines = custom_vlines(x, y[0], y[1], pen=pen, width=2)
             self.mainWindow.Graph_axis.addItem(vlines)
             self.mainWindow.Graph_axis.setClipToView(True)
 
@@ -1087,10 +1090,25 @@ class GraphSettingsWindows(QtGui.QWidget):
         # self.progdialog.setLabelText('Plotting Spikes (if checked).')
 
         if self.mainWindow.plot_spikes:
-
+            # this will plot the spikes as a raster below the graph
             if len(self.mainWindow.active_tetrodes) > 0:
-                if self.cell_spike_time_array == []:
-                    self.spike_colors = ['k', 'b', 'g', 'r', 'c', 'm', 'y', ]
+                # if self.cell_spike_time_array == []:
+                if self.tetrode_spikes == {}:
+                    #self.spike_colors = ['k', 'b', 'g', 'r', 'c', 'm', 'y', ]
+
+                    # the spike colors below are in RGB format and were taken from an
+                    # image color picker, they should match the colors in Tint,
+                    # cell 0 is not there because that is the garbage cell
+                    self.spike_colors = [(1, 8, 184), (93, 249, 75), (234, 8, 9),
+                                         (229, 22, 239), (80, 205, 243), (27, 164, 0),
+                                         (251, 188, 56), (27, 143, 167), (127, 41, 116),
+                                         (191, 148, 23), (185, 9, 17), (231, 223, 67),
+                                         (144, 132, 145), (34, 236, 228), (217, 20, 145),
+                                         (172, 64, 80), (176, 106, 138), (199, 194, 167),
+                                         (216, 204, 105), (160, 204, 61), (187, 81, 88),
+                                         (45, 216, 122), (242, 136, 25), (50, 164, 161),
+                                         (249, 67, 16), (252, 232, 147), (114, 156, 238),
+                                         (241, 212, 179), (129, 62, 162), (235, 133, 126)]
                     self.spike_colors_index = 0
                     self.spike_color_list = []
                     # ------- getting the spike data -------------------
@@ -1114,37 +1132,57 @@ class GraphSettingsWindows(QtGui.QWidget):
                         # check if the user separated bad cells from good cells
                         plottable_units = find_consec(available_units)[0]
 
+                        cell_spike_times_array = []
+                        spike_color_list = []
                         for cell_num in plottable_units:
                             if cell_num == 0:
                                 continue
 
-                            self.cell_labels.append(cell_num)
+                            # self.cell_labels.append(cell_num)
                             cell_spike_times = 1000 * spike_times[np.where((units == cell_num))[1]]
-                            self.cell_spike_time_array.append(cell_spike_times)
-                            self.spike_color_list.append(self.spike_colors[self.spike_colors_index])
-                        self.spike_colors_index += 1
 
-                raster_spike_height = (0.30 / len(self.cell_spike_time_array)) * graph_y_range
+
+                            cell_spike_times_array.append(cell_spike_times)
+                            spike_color_list.append(self.spike_colors[cell_num-1])
+                            # self.cell_spike_time_array.append(cell_spike_times)
+                            # self.spike_color_list.append(self.spike_colors[cell_num-1])
+
+                        self.tetrode_spikes[tetrode_number] = {'times': cell_spike_times_array,
+                                                               'colors': spike_color_list}
+                        # self.spike_colors_index += 1
+                        units = None
+                        available_units = None
+                        spike_times = None
+                        cell_spike_times = None
+                        cell_spike_times_array = None
+                        spike_color_list = None
+
+                # raster_spike_height = (0.30 / len(self.cell_spike_time_array)) * graph_y_range
+                raster_spike_height = (0.30 / 4) * graph_y_range
                 current_cell_raster_minimum = 0  # start at 0 amplitude
-                for i in range(len(self.cell_spike_time_array)):
-                    cell_spike_times = self.cell_spike_time_array[i]
-                    '''
-                    graph_axis.vlines(cell_spike_times, current_cell_raster_minimum,
-                                      current_cell_raster_minimum + raster_spike_height,
-                                      lw=2, colors=self.spike_color_list[i])
-                                      
-                    [graph_axis.addItem(pg.InfiniteLine(pos=spike_time, angle=90, movable=False,
-                                             bounds=[current_cell_raster_minimum,
-                                                     current_cell_raster_minimum + raster_spike_height],
-                                             pen=(0, 0, 0))) for spike_time in cell_spike_times]
-                    '''
-                    # plots the vertical lines, the InfiniteLine does not plot an array like vlines, so we need to do
-                    # a for loop, this method could be significantly slower
-                    self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
-                        [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
-                                               {'colors': self.spike_color_list[i]})
 
-                    current_cell_raster_minimum += raster_spike_height  # increment the minumum height
+                for tetrode_key in sorted(self.tetrode_spikes.keys()):
+                    spike_times = self.tetrode_spikes[tetrode_key]['times']
+                    spike_colors = self.tetrode_spikes[tetrode_key]['colors']
+                    for i in range(len(spike_times)):
+                        cell_spike_times = spike_times[i]
+                        '''
+                        graph_axis.vlines(cell_spike_times, current_cell_raster_minimum,
+                                          current_cell_raster_minimum + raster_spike_height,
+                                          lw=2, colors=self.spike_color_list[i])
+                                          
+                        [graph_axis.addItem(pg.InfiniteLine(pos=spike_time, angle=90, movable=False,
+                                                 bounds=[current_cell_raster_minimum,
+                                                         current_cell_raster_minimum + raster_spike_height],
+                                                 pen=(0, 0, 0))) for spike_time in cell_spike_times]
+                        '''
+                        # plots the vertical lines, the InfiniteLine does not plot an array like vlines, so we need to do
+                        # a for loop, this method could be significantly slower
+                        self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
+                            [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
+                                                   {'colors': spike_colors[i]})
+
+                    current_cell_raster_minimum += raster_spike_height  # increment the minimum height
 
                 previous_source_max = current_cell_raster_minimum + raster_spike_height
 
@@ -1181,6 +1219,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                     previous_source_max = np.amax(envelope)
 
             # graph_axis.plot(data_times, data, 'b')  # plots the data
+            self.mainWindow.graph_max = previous_source_max
             self.newData.mysignal.emit('Main', data_times, data, {'pen': (0, 0, 255)})
             # graph_axis.plot(data_times, data, pen=(0, 0, 255))  # plots the source data in blue
 
@@ -1188,7 +1227,7 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
             # self.progdialog.setValue(self.progress_value)
 
-        self.mainWindow.graph_max = previous_source_max
+        # self.mainWindow.graph_max = previous_source_max
 
         self.progress_signal.mysignal.emit('setText', {'text': 'Mark Peaks (if checked).'})
         # self.progdialog.setLabelText('Mark Peaks (if checked).')
@@ -1221,7 +1260,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.progress_value += 25 / len(self.source_values)
             self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
             # self.progdialog.setValue(self.progress_value)
-
 
         try:
             self.mainWindow.SourceLength = np.amax(self.source_lengths)
@@ -1260,6 +1298,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         # update the iterator to continue with the next graph
 
         self.progress_signal.mysignal.emit('setValue', {'value': 100})
+
         # self.progdialog.setValue(100)
 
         self.progress_signal.close_signal.emit('emit')
