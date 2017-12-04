@@ -12,9 +12,7 @@ base = None
 #    base = "Win32GUI"
 
 additional_imports = ['numpy.core._methods', 'numpy.lib.format', "matplotlib.backends.backend_tkagg",
-                      'scipy.spatial', 'tkinter.filedialog'
-                      # 'pyqtgraph.debug'
-                      ]
+                      'scipy.spatial', 'tkinter.filedialog']
 
 packages = ['matplotlib', 'scipy', 'scipy.spatial', 'pyqtgraph']
 

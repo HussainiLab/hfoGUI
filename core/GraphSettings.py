@@ -1220,7 +1220,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
             # graph_axis.plot(data_times, data, 'b')  # plots the data
             self.mainWindow.graph_max = previous_source_max
-            self.newData.mysignal.emit('Main', data_times, data, {'pen': (0, 0, 255)})
+            self.newData.mysignal.emit('Main', data_times, data.flatten(), {'pen': (0, 0, 255)})
             # graph_axis.plot(data_times, data, pen=(0, 0, 255))  # plots the source data in blue
 
             self.progress_value += 25 / len(self.source_values)
