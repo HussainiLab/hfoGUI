@@ -24,6 +24,12 @@ class update_plots_signal(QtCore.QObject):
     lr_signal = QtCore.pyqtSignal(str)
 
 
+class customProgress_signal(QtCore.QObject):
+    start_signal = QtCore.pyqtSignal(str)
+    mysignal = QtCore.pyqtSignal(str, dict)
+    close_signal = QtCore.pyqtSignal(str)
+
+
 class GraphSettingsWindows(QtGui.QWidget):
     """This is going to be the QWidget class that will be the popup window if the user
     decides they want to add a Graph, this will handle all graphing on the main QWidget as well"""
@@ -37,6 +43,11 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.newData = update_plots_signal()
         self.newData.mysignal.connect(self.update_plots)
         self.newData.mouse_signal.connect(self.mouse_slot)
+
+        self.progress_signal = customProgress_signal()
+        self.progress_signal.start_signal.connect(lambda: self.Progress('start'))
+        self.progress_signal.mysignal.connect(self.update_progress)
+        self.progress_signal.close_signal.connect(lambda: self.Progress('stop'))
 
         self.ActiveSourceSignal = Communicate()
         self.RePlotTFSignal = Communicate()
@@ -296,6 +307,29 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.cell_spike_time_array = []
         self.cell_labels = []
 
+    def Progress(self, string):
+
+        if 'start' in string:
+            self.progress_value = 0
+            self.progdialog = QtGui.QProgressDialog(
+                "Plotting Sources...", "Cancel", 0, 100, self)
+            self.progdialog.setWindowTitle("Plotting")
+            self.progdialog.setWindowModality(QtCore.Qt.WindowModal)
+            self.progdialog.show()
+            self.progdialog.setValue(0)
+        elif 'stop' in string:
+            self.progdialog.close()
+
+    def update_progress(self, action, kwargs):
+
+        if 'setText' in action:
+
+            self.progdialog.setLabelText(kwargs['text'])
+
+        elif 'setValue' in action:
+
+            self.progdialog.setValue(kwargs['value'])
+
     def plot_response(self):
 
         # get the filter parameters
@@ -457,19 +491,28 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.mainWindow.Graph_axis.setXRange(self.mainWindow.current_time, self.mainWindow.current_time +
                                  self.mainWindow.windowsize, padding=0)
             self.mainWindow.Graph_axis.setClipToView(True)
-            self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
+
+            if hasattr(self.mainWindow, 'graph_max'):
+                self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
 
         elif source == 'MarkPeaks':
+            # vlines = custom_vlines(x, y[0], y[1], style=QtCore.Qt.DashLine, **kwargs)
+            vlines = custom_vlines(x, y[0], y[1], **kwargs)
+            self.mainWindow.Graph_axis.addItem(vlines)
+
+            '''
             [self.mainWindow.Graph_axis.addItem(pg.InfiniteLine(pos=peak_time, angle=90, movable=False,
                                                 bounds=[0,
                                                         y],
                                                 pen=(0, 0, 0))) for peak_time in x]
-
+                                                '''
+            self.mainWindow.Graph_axis.setClipToView(True)
         elif source == 'PlotSpikes':
             if 'colors' in kwargs.keys():
                 pen = kwargs['colors']
             vlines = custom_vlines(x, y[0], y[1], pen=pen)
             self.mainWindow.Graph_axis.addItem(vlines)
+            self.mainWindow.Graph_axis.setClipToView(True)
 
     def mouse_slot(self, action):
         if action == 'create':
@@ -732,6 +775,12 @@ class GraphSettingsWindows(QtGui.QWidget):
                         option_index += 1
 
     def Plot(self):
+
+        self.progress_signal.start_signal.emit('start')
+
+        while not hasattr(self, 'progdialog'):
+            time.sleep(0.1)
+
         graph_axis = self.mainWindow.Graph_axis
 
         # time.sleep(0.1)
@@ -774,8 +823,9 @@ class GraphSettingsWindows(QtGui.QWidget):
             option_index += 1
 
         # iterate through each graph added
+        self.progress_signal.mysignal.emit('setText', {'text': 'Collecting Source Information'})
+        # self.progdialog.setLabelText('Collecting Source Information')
         while iterator.value():
-
             graph_item = iterator.value()  # define the current graph + data within the graph item
 
             # define each of the variables of the graph
@@ -1015,6 +1065,9 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                 self.source_values.append([speed, Fs])  # the filtered data
 
+            self.progress_value += 25/self.graphs.topLevelItemCount()
+            self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
+            # self.progdialog.setValue(self.progress_value)
             iterator += 1
 
         # self.rectangle_selector()
@@ -1029,6 +1082,9 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         previous_source_max = 0
         # plot the spikes
+
+        self.progress_signal.mysignal.emit('setText', {'text': 'Plotting Spikes (if checked).'})
+        # self.progdialog.setLabelText('Plotting Spikes (if checked).')
 
         if self.mainWindow.plot_spikes:
 
@@ -1092,6 +1148,12 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                 previous_source_max = current_cell_raster_minimum + raster_spike_height
 
+        self.progress_value += 25
+        self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
+        # self.progdialog.setValue(self.progress_value)
+
+        self.progress_signal.mysignal.emit('setText', {'text': 'Plotting Sources.'})
+        # self.progdialog.setLabelText('Plotting Sources.')
         # plotting the data
         self.source_lengths = []
         for i, source in enumerate(self.source_values):
@@ -1122,8 +1184,14 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.newData.mysignal.emit('Main', data_times, data, {'pen': (0, 0, 255)})
             # graph_axis.plot(data_times, data, pen=(0, 0, 255))  # plots the source data in blue
 
+            self.progress_value += 25 / len(self.source_values)
+            self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
+            # self.progdialog.setValue(self.progress_value)
+
         self.mainWindow.graph_max = previous_source_max
 
+        self.progress_signal.mysignal.emit('setText', {'text': 'Mark Peaks (if checked).'})
+        # self.progdialog.setLabelText('Mark Peaks (if checked).')
         # if the user chose to mark peaks, mark each of the peaks
         for i in range(len(self.source_values)):
             if self.mark_source[i]:
@@ -1143,7 +1211,16 @@ class GraphSettingsWindows(QtGui.QWidget):
                                                             previous_source_max],
                                                     pen=(0, 0, 0))) for peak_time in peak_times]
                 '''
-                self.newData.mysignal.emit('MarkPeaks', peak_times, previous_source_max, {})
+
+                self.newData.mysignal.emit('MarkPeaks', peak_times,
+                                           np.array([0, previous_source_max]), {'pen': (0, 0, 0),
+                                                                                'style': QtCore.Qt.DashLine,
+                                                                               'width': 1})
+
+                # self.newData.mysignal.emit('MarkPeaks', peak_times, previous_source_max, {})
+            self.progress_value += 25 / len(self.source_values)
+            self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
+            # self.progdialog.setValue(self.progress_value)
 
 
         try:
@@ -1181,6 +1258,12 @@ class GraphSettingsWindows(QtGui.QWidget):
         '''
         self.plotting = False
         # update the iterator to continue with the next graph
+
+        self.progress_signal.mysignal.emit('setValue', {'value': 100})
+        # self.progdialog.setValue(100)
+
+        self.progress_signal.close_signal.emit('emit')
+        # self.progdialog.close()
 
     def PlotSlice(self):
         pass
@@ -1494,7 +1577,6 @@ class GraphSettingsWindows(QtGui.QWidget):
                         except:
                             pass
 
-
     def getActiveSources(self):
 
         root = self.graphs.invisibleRootItem()
@@ -1649,3 +1731,11 @@ class custom_vlines(pg.GraphicsObject):
             return None   ## x axis should never be auto-scaled
         else:
             return (0, 0)
+
+
+class ProgressWindow(QtGui.QWidget):
+
+    def __init__(self):
+        super(ProgressWindow, self).__init__()
+
+
