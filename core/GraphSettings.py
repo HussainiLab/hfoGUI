@@ -527,6 +527,7 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.mainWindow.proxy = pg.SignalProxy(self.mainWindow.Graph_axis.scene().sigMouseMoved, rateLimit=100,
                                    slot=self.mainWindow.mouseMoved)
 
+
     def changeFilter(self, i, j):
         lower = False
         upper = False

@@ -27,7 +27,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
-        pg.setConfigOptions(antialias=True)
+        # pg.setConfigOptions(antialias=True)
         # pg.setConfigOption('leftButtonPan', False)
 
         if getattr(sys, 'frozen', False):
@@ -913,6 +913,7 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     main_window.scrollbar_thread_worker.moveToThread(main_window.scrollbar_thread)
     main_window.scrollbar_thread_worker.start.emit("start")
 
+
 def plotCheckChanged(main_window, settings_window):
 
     # make sure that it only plots the spikes if there are sources on the GraphSettingsWindow widget
@@ -929,9 +930,9 @@ def plotCheckChanged(main_window, settings_window):
 
 
 def run():
-    # app = QtGui.QApplication(sys.argv)
+    app = QtGui.QApplication(sys.argv)
 
-    app = pg.mkQApp()
+    # app = pg.mkQApp()
 
     main_w = Window()  # calling the main window
 
@@ -995,6 +996,7 @@ def run():
     setting_w.RePlotTFSignal.myGUI_signal.connect(tf_plot_w.RePlot)
 
     sys.exit(app.exec_())  # prevents the window from immediately exiting out
+
 
 if __name__ == '__main__':
     run()  # the command that calls run()
