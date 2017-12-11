@@ -135,6 +135,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         # adds the axis with custom viewbox to override the right click
         self.Graph_axis = self.graphics_window.addPlot(row=1, col=0, viewBox=CustomViewBox(self, self.graphics_window))
+        self.Graph_axis.hideButtons()
         # self.Graph_axis
 
         # self.Graph_axis = self.graphics_window.addPlot(row=1, col=0)
@@ -187,11 +188,13 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                     self.graph_parameter_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j + 1], i, j+1)
                     if 'Window Size' in parameter:
+                        self.i_windowsize, self.j_windowsize = (i, j)
                         self.graph_parameter_fields[i, j + 1].textChanged.connect(self.ChangeWindowSize)
                     elif 'Amplitude' in parameter:
                         pass
                         #self.graph_parameter_fields[i, j + 1].textChanged.connect(self.setCurrentTime)
                     elif 'Current Time' in parameter:
+                        self.i_current_time, self.j_current_time = (i, j)
                         self.graph_parameter_fields[i, j + 1].textChanged.connect(functools.partial(self.changeCurrentGraph, 'text'))
                         pass
                         #self.graph_parameter_fields[i, j + 1].textChanged.connect(self.setCurrentTime)
@@ -318,9 +321,20 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             time.sleep(0.1)
             self.previous_current_time = 0
 
-        while self.GraphLoaded:
+        '''
+        avgFps = 0
+        avg_fps = []
+        times = []
+        '''
 
+        while self.GraphLoaded:
+            # now = pg.ptime.time()
+
+            # time1 = pg.ptime.time()
             self.get_parameters() # sets the current time
+            self.get_scroll_values()
+            # times.append(pg.ptime.time() - time1)
+
             try:
                 if self.current_time < 0:
                     pass
@@ -333,6 +347,17 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                         # self.GraphCanvas.draw()
                         self.previous_current_time = self.current_time
                         # time.sleep(0.001) # stops the figure from flashing white when the graph is re-drawn
+
+                        '''
+                        try:
+                            fps = 1.0 / (now - self.last_update)
+                            avgFps = avgFps * 0.8 + fps * 0.2
+                            avg_fps.append(avgFps)
+                            # print(avgFps)
+                        except:
+                            pass
+                        self.last_update = now
+                        '''
 
                 except AttributeError:
                     pass
@@ -370,7 +395,8 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             for parameter, position in self.graph_parameter_field_positions.items():
                 pass
 
-    def get_parameters(self):
+    def set_current_filename(self):
+        """This function will set the current filename"""
         for parameter, position in self.main_window_field_positions.items():
             if "EEG Filename" in parameter:
                 self.cur_eeg_filename = self.main_window_fields[position[0], position[1] + 1].text()
@@ -378,6 +404,35 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                 self.cur_lfp_filename = self.main_window_fields[position[0], position[1] + 1].text()
             elif 'Set Filename' in parameter:
                 self.current_set_filename = self.main_window_fields[position[0], position[1] + 1].text()
+
+    def get_scroll_values(self):
+        try:
+            self.current_time = float(self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].text())
+        except ValueError:
+            self.current_time = None
+
+        try:
+            self.windowsize = float(self.graph_parameter_fields[self.i_windowsize, self.j_windowsize + 1].text())
+        except ValueError:
+            self.windowsize = None
+
+    def get_current_time(self):
+        try:
+            self.current_time = float(self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].text())
+        except ValueError:
+            self.current_time = None
+
+    def get_window_size(self):
+        try:
+            self.windowsize = float(self.graph_parameter_fields[self.i_windowsize, self.j_windowsize + 1].text())
+        except ValueError:
+            self.windowsize = None
+
+    def get_parameters(self):
+        """This was one large function that would search through every widget for values and update the class attributes
+        however, this is also used in updating the plots so I figured it could be slowing things down and refactored out
+        some of the get/set portions
+        """
 
         for parameter, position in self.graph_parameter_field_positions.items():
             if 'Window Size' in parameter:
@@ -840,6 +895,8 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     """Updates the fields of the graph options window when the .set file changes"""
     if hasattr(main_window, 'scrollbar_thread'):
         main_window.scrollbar_thread.quit()
+
+    main_window.set_current_filename()  # update the new filename
 
     # update the parameters from the Main Window
     main_window.get_parameters()

@@ -780,6 +780,8 @@ class GraphSettingsWindows(QtGui.QWidget):
 
     def Plot(self):
 
+        self.mainWindow.get_parameters()
+
         self.progress_signal.start_signal.emit('start')
 
         while not hasattr(self, 'progdialog'):

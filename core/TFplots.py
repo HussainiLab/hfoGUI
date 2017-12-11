@@ -76,6 +76,7 @@ class TFPlotWindow(QtGui.QWidget):
         # self.RawGraphAxis = self.RawGraph.add_axes([0.07, 0.1, 0.90, 0.85], frameon=False)
         # self.RawGraphAxis = pg.PlotWidget()
         self.RawGraphAxis = PltWidget(self)
+        self.RawGraphAxis.hideButtons()
         self.RawGraphAxis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
         RawGraphLayout = QtGui.QVBoxLayout()
         RawGraphLayout.addWidget(RawGraphLabel)
@@ -88,6 +89,7 @@ class TFPlotWindow(QtGui.QWidget):
         # self.FilteredGraphAxis = self.FilteredGraph.add_axes([0.07, 0.1, 0.90, 0.85], frameon=False)
         # self.FilteredGraphAxis = pg.PlotWidget()
         self.FilteredGraphAxis = PltWidget(self)
+        self.FilteredGraphAxis.hideButtons()
         self.FilteredGraphAxis.setMouseEnabled(x=False, y=False) # disables the mouse interactions
 
         FilteredGraphLayout = QtGui.QVBoxLayout()
@@ -102,6 +104,7 @@ class TFPlotWindow(QtGui.QWidget):
 
         # self.STransformGraphAxis = pg.PlotWidget()
         self.STransformGraphAxis = PltWidget(self)
+        self.STransformGraphAxis.hideButtons()
         self.STransformGraphAxis.setMouseEnabled(x=False, y=False) # disables the mouse interactions
         # self.STransformGraphCanvas = matplot.MatplotlibWidget()
         # self.STransformGraphCanvas.getFigure().add_axes([0.07, 0.1, 0.90, 0.85], frameon=False)
@@ -140,10 +143,12 @@ class TFPlotWindow(QtGui.QWidget):
 
         # self.PSDGraphAxis = pg.PlotWidget()
         self.PSDGraphAxis = PltWidget(self)
+        self.PSDGraphAxis.hideButtons()
         self.PSDGraphAxis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
 
         # self.PSDLogGraphAxis = pg.PlotWidget()
         self.PSDLogGraphAxis = PltWidget(self)
+        self.PSDLogGraphAxis.hideButtons()
         self.PSDLogGraphAxis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
 
         graph_layout = QtGui.QVBoxLayout()
