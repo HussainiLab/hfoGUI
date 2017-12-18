@@ -4,9 +4,39 @@ from pyfftw.interfaces import scipy_fftpack as fftw
 # from scipy.io import savemat
 
 
-def s_transform(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge=False,
-                analytic_signal=False, factor=1):
+def gauss_window(length, freq, factor):
+    """Function to compute the Gaussion window for
+    function Stransform. g_window is used by function
+    Stransform. Programmed by Eric Tittley
 
+    -----Inputs Needed--------------------------
+
+    length-the length of the Gaussian window
+
+    freq-the frequency at which to evaluate
+    the window.
+    factor- the window-width factor
+
+    -----Outputs Returned--------------------------
+
+    gauss-The Gaussian window
+    """
+    vector1 = np.arange(0, length)
+    vector2 = np.arange(-length, 0)
+
+    vector = np.vstack((vector1, vector2))
+
+    vector = np.multiply(vector, vector)
+
+    vector = np.multiply(vector, -factor * 2 * (np.pi ** 2) / (freq ** 2))
+
+    gauss = np.sum(np.exp(vector), axis=0)
+
+    return gauss
+
+
+def s_transform(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge=False,
+                analytic_signal=False, factor=1):
     """
     ------------------------------------------------------------------------
     Note: This is a conversion from code by Robert Glenn Stockwell written in
@@ -33,22 +63,25 @@ def s_transform(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge=False,
 
     timeseries = timeseries.astype(np.float64)
 
-    #nyquist = Fs / 2
+    Fs = 1 / sample_rate
 
-    # if minfreq < 0 | minfreq > nyquist:
-    #    # maximum frequency you can obtain is Nyquist frequency ()
-    #    minfreq = 0
-    #    print('Minfreq < 0 or > Nyquist, setting value to 0')
-
+    nyquist = Fs / 2
+    '''
+    if minfreq < 0 | minfreq > nyquist:
+        # maximum frequency you can obtain is Nyquist frequency ()
+        minfreq = 0
+        print('Minfreq < 0 or > Nyquist, setting value to 0')
+    '''
     if minfreq < 0 | minfreq > len(timeseries) / 2:
         # maximum frequency you can obtain is Nyquist frequency ()
         minfreq = 0
         print('Minfreq < 0 or > Nyquist, setting value to 0')
+    '''
+    if maxfreq > nyquist:
+        print('Maxfreq > Nyquist setting value to Nyquist')
+        maxfreq = nyquist
 
-    # if maxfreq > nyquist:
-    #    print('Maxfreq > Nyquist setting value to Nyquist')
-    #    maxfreq = nyquist
-
+    '''
     if maxfreq > len(timeseries) / 2:
         print('Maxfreq > Nyquist setting value to Nyquist')
         maxfreq = len(timeseries) / 2
@@ -62,20 +95,22 @@ def s_transform(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge=False,
 
     # t = np.arange(0, len(timeseries))/Fs
     t = np.divide(np.arange(0, len(timeseries)), Fs)
-    spe_nelements = np.ceil((maxfreq - minfreq + 1) / output_Fs)
-    # f = (np.arange(0, spe_nelements) * output_Fs + minfreq) / (Fs * len(timeseries))
-    f = np.divide(np.multiply(np.arange(0, spe_nelements), output_Fs) + minfreq, Fs*len(timeseries))
 
-    st_values = strans(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge,
+    spe_nelements = np.ceil((maxfreq - minfreq + 1) / output_Fs)
+
+    # f = (np.arange(0, spe_nelements) * output_Fs + minfreq) / (Fs * len(timeseries))
+    f = np.divide(np.multiply(np.arange(0, spe_nelements), output_Fs), sample_rate * len(timeseries))
+
+    st_values = strans(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge,
                        analytic_signal, factor)
 
     return st_values, t, f
 
 
-def strans(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge,
+def strans(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge,
            analytic_signal, factor):
     n = len(timeseries)
-    original = timeseries.copy()
+    # original = timeseries.copy()
 
     if removeedge:
         print('Removing trend with polynomial fit')
@@ -152,6 +187,7 @@ def strans(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge,
 
     st_output = np.asarray(st_output, dtype=np.complex)
     for freq in freq_array:
+        # print(freq)
         st_output[int(freq / output_Fs), :] = np.fft.ifft(
             np.multiply(vector_fft.flatten('F')[int(minfreq + freq): int(minfreq + freq + n)],
                         gauss_window(n, int(minfreq + freq), factor) + 0j
@@ -160,7 +196,14 @@ def strans(timeseries, minfreq, maxfreq, Fs, output_Fs, removeedge,
     return st_output
 
 
-def stransform(h):
+def conj_nonzeros(X):
+    ind = np.where(X.imag != 0)
+    X[ind] = np.conj(X[ind])
+
+    return X
+
+
+def stransform(h, Fs):
     '''
     Compute S-Transform without for loops
 
@@ -181,6 +224,17 @@ def stransform(h):
 
     n = h.shape[1]
 
+    num_voices = int(Fs / 2)
+    '''
+    if n is None:
+        n = h.shape[1]
+
+    print(n)
+    '''
+
+    # n_half = num_voices
+
+
     n_half = np.fix(n / 2)
 
     n_half = int(n_half)
@@ -192,31 +246,34 @@ def stransform(h):
 
     f = np.concatenate((np.arange(n_half + 1),
                         np.arange(-n_half + 1 - odd_n, 0)
-                        )) / n
+                        )) / n  # array that goes 0-> 0.5 and then -0.5 -> 0 [2*n_half,]
 
-    Hft = fftw.fft(h, axis=1)  # uV
+    Hft = fftw.fft(h, axis=1)  # uV, [1xn]
 
     Hft = conj_nonzeros(Hft)
+
     # compute all frequency domain Guassians as one matrix
 
-    invfk = np.divide(1, f[1:n_half + 1])
+    invfk = np.divide(1, f[1:n_half + 1])  # matrix of inverse frequencies in Hz, [n_half]
+
     invfk = invfk.reshape((len(invfk), 1))
 
-    W = np.multiply(2 * np.pi * np.tile(f, (n_half, 1)),
-                    np.tile(invfk.reshape((len(invfk), 1)), (1, n))
-                    )
+    W = np.multiply(
+        2 * np.pi * np.tile(f, (n_half, 1)),  # [n_half, f]
+        np.tile(invfk.reshape((len(invfk), 1)), (1, n)),  # [n_half(invfk) x n]
+    )  # n_half x len(f)
 
     G = np.exp((-W ** 2) / 2)  # Gaussian in freq domain
-    G = np.asarray(G, dtype=np.complex)
+    G = np.asarray(G, dtype=np.complex)  # n_half x len(f)
 
     # Compute Toeplitz matrix with the shifted fft(h)
 
-    HW = scipy.linalg.toeplitz(Hft[0, :n_half + 1].T, np.conj(Hft))
+    HW = scipy.linalg.toeplitz(Hft[0, :n_half + 1].T, np.conj(Hft))  # n_half + 1 x len(h)
     # HW = scipy.linalg.toeplitz(Hft[0,:n_half+1].T, Hft)
 
     # exclude the first row, corresponding to zero frequency
 
-    HW = HW[1:n_half + 1, :]
+    HW = HW[1:n_half + 1, :]  # n_half x len(h)
 
     # compute the stockwell transform
 
@@ -236,65 +293,15 @@ def stransform(h):
     return ST
 
 
-def conj_nonzeros(X):
-    ind = np.where(X.imag != 0)
-    X[ind] = np.conj(X[ind])
-
-    return X
-
-
-def gauss_window(length, freq, factor):
-    """Function to compute the Gaussion window for
-    function Stransform. g_window is used by function
-    Stransform. Programmed by Eric Tittley
-
-    -----Inputs Needed--------------------------
-
-    length-the length of the Gaussian window
-
-    freq-the frequency at which to evaluate
-    the window.
-    factor- the window-width factor
-
-    -----Outputs Returned--------------------------
-
-    gauss-The Gaussian window
-    """
-    vector1 = np.arange(0, length)
-    vector2 = np.arange(-length, 0)
-
-    vector = np.vstack((vector1, vector2))
-
-    vector = np.multiply(vector, vector)
-
-    vector = np.multiply(vector, -factor * 2 * (np.pi ** 2) / (freq ** 2))
-
-    gauss = np.sum(np.exp(vector), axis=0)
-
-    return gauss
-
-
-def stran_psd_old(h, minfreq, maxfreq, Fs, output_Fs):
-    ST = stransform(h)
-
-    # print(ST[:,:3])
-    power = np.abs(ST)
-    # print(power[:,0])
-    _, _, f = s_transform(h, minfreq, maxfreq, Fs, output_Fs)
-
-    # normalize phase estimates to one length
-    nST = np.divide(ST, power)
-    phase = np.angle(nST)
-
-    return power, phase, f
-
-
 def stran_psd(h, Fs, minfreq=0, maxfreq=600, output_Fs=1):
     '''The s-transform, ST, returns an NxM, N being number of frequencies, M being number of time points'''
 
-    ST = stransform(h)  # returns all frequencies between 0 and the nyquist frequency
-
     nyquist = Fs / 2
+
+    ST = stransform(h, Fs)  # returns all frequencies between 0 and the nyquist frequency
+
+    # f = stransform(h)
+    # return f
 
     if minfreq < 0 | minfreq > nyquist:
         # maximum frequency you can obtain is Nyquist frequency ()
@@ -329,4 +336,16 @@ def stran_psd(h, Fs, minfreq=0, maxfreq=600, output_Fs=1):
     return power, phase, f
 
 
+def stran_psd_old(h, minfreq, maxfreq, Fs, output_Fs):
+    # ST = stransform(h)
 
+    ST, t, f = s_transform(h, minfreq, maxfreq, 1 / Fs, output_Fs)
+    power = np.abs(ST)
+
+    nyquist = Fs / 2
+
+    # normalize phase estimates to one length
+    nST = np.divide(ST, power)
+    phase = np.angle(nST)
+
+    return power, phase, f

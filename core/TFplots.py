@@ -14,6 +14,7 @@ from matplotlib.colors import ColorConverter
 # import pyqtgraph.widgets.MatplotlibWidget as matplot
 from PyQt4 import QtCore, QtGui
 from scipy import interpolate
+import time
 
 
 class update_plots_signal(QtCore.QObject):
@@ -375,7 +376,14 @@ class TFPlotWindow(QtGui.QWidget):
 
             # get the window_size
             try:
-                windowsize = self.Fs * float(self.stockwell_window_size.text())/1000  # indices
+                if float(self.stockwell_window_size.text())/1000 < 1:
+                    enforced_1s = True
+                    windowsize_1s = 1*self.Fs  # make the minimum 1 second
+                    windowsize = self.Fs * float(self.stockwell_window_size.text()) / 1000  # indices
+                else:
+                    enforced_1s = False
+                    windowsize = self.Fs * float(self.stockwell_window_size.text())/1000  # indices
+
             except ValueError:
                 return
 
@@ -384,6 +392,21 @@ class TFPlotWindow(QtGui.QWidget):
             plot_window_min = np.rint(selected_time - windowsize/2)
             plot_window_max = np.rint(selected_time + windowsize/2)
 
+            if enforced_1s:
+                plot_window_min_1s = np.rint(selected_time - windowsize_1s/2)
+                plot_window_max_1s = np.rint(selected_time + windowsize_1s/2)
+
+                if plot_window_min_1s < 0:
+                    plot_window_min_1s = 0
+                    plot_window_max_1s = np.rint(windowsize_1s)
+
+                elif plot_window_max_1s > len(self.raw_data) - 1:
+                    plot_window_max_1s = len(self.raw_data) - 1
+                    plot_window_min_1s = np.rint(plot_window_max - windowsize_1s)
+
+                else:
+                    pass
+
             if plot_window_min < 0:
                 plot_window_min = 0
                 plot_window_max = np.rint(windowsize)
@@ -391,18 +414,28 @@ class TFPlotWindow(QtGui.QWidget):
             elif plot_window_max > len(self.raw_data)-1:
                 plot_window_max = len(self.raw_data)-1
                 plot_window_min = np.rint(plot_window_max - windowsize)
+
             else:
                 pass
 
             plot_window_max = np.int(plot_window_max)
             plot_window_min = np.int(plot_window_min)
 
+            if enforced_1s:
+                plot_window_max_1s = np.int(plot_window_max_1s)
+                plot_window_min_1s = np.int(plot_window_min_1s)
+
             t = (1000 / self.Fs) * np.arange(plot_window_min, plot_window_max + 1)  # ms
+
             # timeseries = self.filtered_data[plot_window_min:plot_window_max + 1]
             timeseries = self.raw_data[plot_window_min:plot_window_max + 1]
             timeseries = timeseries - np.mean(timeseries)
             t_min = np.amin(t)
             t_max = np.amax(t)
+
+            if enforced_1s:
+                timeseries_1s = self.raw_data[plot_window_min_1s:plot_window_max_1s + 1]
+                timeseries_1s = timeseries_1s - np.mean(timeseries_1s)
 
             filtered_data = self.filtered_data[plot_window_min:plot_window_max + 1]
 
@@ -436,7 +469,26 @@ class TFPlotWindow(QtGui.QWidget):
             except ValueError:
                 return
 
-            power, phase, f = stran_psd(timeseries, self.Fs, minfreq=minfreq, maxfreq=maxfreq, output_Fs=1)
+            try:
+                if not enforced_1s:
+                    power, phase, f = stran_psd(timeseries, self.Fs, minfreq=minfreq, maxfreq=maxfreq, output_Fs=1)
+                else:
+                    power, phase, f = stran_psd(timeseries_1s, self.Fs, minfreq=minfreq, maxfreq=maxfreq, output_Fs=1)
+
+                    window_diff = plot_window_max - plot_window_min
+                    start = plot_window_min-plot_window_min_1s
+                    stop = start + window_diff+1
+                    power = power[:, start:stop]
+
+            except MemoryError:
+                self.mainWindow.choice = ''
+                self.mainWindow.ErrorDialogue.myGUI_signal.emit('MemoryError')
+
+                while self.mainWindow.choice == '':
+                    time.sleep(0.1)
+
+                return
+
             # power, phase, f = stran_psd_old(timeseries, 0, self.Fs/2, self.Fs, 1)
 
             '''
@@ -632,6 +684,7 @@ class TFPlotWindow(QtGui.QWidget):
 
             # if '.eeg' in self.source_filename:
             # interpolation will allow the graph to look less pixelated
+
             f = interpolate.interp2d(x, freq, power, kind='linear')
             x_new = np.linspace(x[0], x[-1], num=10e2)
             y_new = np.linspace(freq[0], freq[-1], num=10e2)

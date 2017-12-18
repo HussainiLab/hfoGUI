@@ -534,6 +534,11 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                                                      "Filename: %s\n" % filename,
                                                      QtGui.QMessageBox.Yes | QtGui.QMessageBox.Cancel)
 
+        elif 'MemoryError' in error:
+            self.choice = QtGui.QMessageBox.question(self, "Error: Memory Error!",
+                                                     "This action caused a memory error!",
+                                                     QtGui.QMessageBox.Yes | QtGui.QMessageBox.Cancel)
+
         elif 'ScoreFileExistError' in error:
 
             filename = error[error.find(':') + 1:]
