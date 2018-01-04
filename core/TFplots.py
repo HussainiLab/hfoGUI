@@ -509,7 +509,6 @@ class TFPlotWindow(QtGui.QWidget):
             
             self.newData.mysignal.emit('T-F', t, np.hstack((power, f.reshape((-1, 1)))))
 
-
             PSD = power[:, int(np.fix(power.shape[1] / 2))]
             PSD = np.absolute(PSD)**2  # need to square the magnitude to get power spectral density
             PSDlog10 = np.multiply(np.log10(PSD), 10)
