@@ -79,14 +79,14 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             mod_date = time.ctime(os.path.getmtime(sys.executable))  # finds the modification date of the program
 
             vers_label = QtGui.QLabel(
-                os.path.splitext(os.path.basename(sys.executable))[0] + " V1.0 - Last Updated: " + mod_date)
+                os.path.splitext(os.path.basename(sys.executable))[0] + " V1.1 - Last Updated: " + mod_date)
 
         else:
 
             mod_date = time.ctime(os.path.getmtime(__file__))  # finds the modification date of the program
 
             vers_label = QtGui.QLabel(
-                os.path.splitext(os.path.basename(__file__))[0] + " V1.0 - Last Updated: " + mod_date)
+                os.path.splitext(os.path.basename(__file__))[0] + " V1.1 - Last Updated: " + mod_date)
 
         # ------------- grid layout ------------------------
 
@@ -142,7 +142,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         self.vb = self.Graph_axis.vb
 
-        self.Graph_axis.setMouseEnabled(x=False, y=False) # disables the mouse interactions
+        self.Graph_axis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
 
         self.Graph_axis.setLabel('bottom', "Time", units='ms')  # adds the x label
 
@@ -161,7 +161,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
         # -------------- graph settigns -------------------------------
 
         self.graph_parameters = [
-            'Window Size(ms):', '', 'Current Time(ms):', '', 'Start Time(ms):', '', 'Stop Time(ms):', '','Plot Spikes', ''
+            'Window Size(ms):', '', 'Current Time(ms):', '', 'Start Time(ms):', '', 'Stop Time(ms):', '', 'Plot Spikes', ''
         ]
         self.graph_parameter_fields = {}
         self.graph_parameter_field_positions = {}
@@ -331,7 +331,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             # now = pg.ptime.time()
 
             # time1 = pg.ptime.time()
-            self.get_parameters() # sets the current time
+            self.get_parameters()  # sets the current time
             self.get_scroll_values()
             # times.append(pg.ptime.time() - time1)
 
@@ -551,6 +551,12 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             self.choice = QtGui.QMessageBox.question(self, "Error: Invalid Automatic Detection Parameter!",
                                                      "One of designated parameters is invalid,\n" +
                                                      "please use the correct parameter format!\n",
+                                                     QtGui.QMessageBox.Ok)
+
+        elif 'ZeroCutoffError' in error:
+            self.choice = QtGui.QMessageBox.question(self, "Error: Zero Cutoff Error",
+                                                     "A filter cutoff value is set to zero, this is not allowed. If you want" +
+                                                     "to include zero, use a lowpass filter.",
                                                      QtGui.QMessageBox.Ok)
 
     def changeEventTimes(self):

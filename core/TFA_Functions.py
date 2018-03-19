@@ -339,7 +339,7 @@ def stran_psd(h, Fs, minfreq=0, maxfreq=600, output_Fs=1):
 def stran_psd_old(h, minfreq, maxfreq, Fs, output_Fs):
     # ST = stransform(h)
 
-    ST, t, f = s_transform(h, minfreq, maxfreq, 1 / Fs, output_Fs)
+    ST, t, f = s_transform(h, minfreq, maxfreq, 1/Fs, output_Fs)
     power = np.abs(ST)
 
     nyquist = Fs / 2

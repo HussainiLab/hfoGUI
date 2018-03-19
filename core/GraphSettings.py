@@ -622,6 +622,10 @@ class GraphSettingsWindows(QtGui.QWidget):
         for option in self.graph_header_options:
             if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                 continue
+
+            if 'Filter Type' in option:
+                filter_type = option
+
             for option_value, (i, j) in self.graph_header_option_positions.items():
                 if option == option_value and 'Cutoff' in option:
                     try:
@@ -660,7 +664,23 @@ class GraphSettingsWindows(QtGui.QWidget):
                                 time.sleep(0.1)
                             return
 
+                if 'Lower' in option:
+                    lower_cutoff = value
+                elif 'Upper' in option:
+                    upper_cutoff = value
+
+        if lower_cutoff == 0 or upper_cutoff == 0:
+            self.mainWindow.choice = ''
+            self.mainWindow.ErrorDialogue.myGUI_signal.emit("ZeroCutoffError")
+            while self.mainWindow.choice == '':
+                time.sleep(0.1)
+
+            return
+
         if 'add' in action:
+
+
+
             self.addSource()
         elif 'update' in action:
             self.updateSource()
@@ -831,6 +851,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         # iterate through each graph added
         self.progress_signal.mysignal.emit('setText', {'text': 'Collecting Source Information'})
         # self.progdialog.setLabelText('Collecting Source Information')
+
         while iterator.value():
             graph_item = iterator.value()  # define the current graph + data within the graph item
 
@@ -963,18 +984,23 @@ class GraphSettingsWindows(QtGui.QWidget):
                     if 'none' not in filter_type.lower():
 
                         if 'low pass' in filter_type.lower():
+
                             upper_cutoff = float(upper_cutoff)
+
                             EEG = sp.Filtering().iirfilt(bandtype='low', data=EEGRaw, Fs=Fs, Wp=upper_cutoff, order=order,
                                                          automatic=0, Rp=0.1, As=60, filttype=filter_method, showresponse=0)
 
                         elif 'high pass' in filter_type.lower():
                             lower_cutoff = float(lower_cutoff)
+
                             EEG = sp.Filtering().iirfilt(bandtype='high', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, order=order,
                                                          automatic=0, Rp=0.1, As=60, filttype='butter', showresponse=0)
 
                         elif 'bandpass' in filter_type.lower():
+
                             lower_cutoff = float(lower_cutoff)
                             upper_cutoff = float(upper_cutoff)
+
                             EEG = sp.Filtering().iirfilt(bandtype='band', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, Ws=upper_cutoff,
                                                          order=order, automatic=0, Rp=0.1, As=60, filttype='butter',
                                                          showresponse=0)
