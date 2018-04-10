@@ -115,7 +115,7 @@ def getpos(pos_fpath, arena, method=''):
         t = t.reshape((len(t), 1))
 
         if method == 'raw':
-            return x, y, t
+            return x, y, t, sample_rate
 
         t = np.divide(t, np.float(timebase))  # converting the frame number from Axona to the time value
 
