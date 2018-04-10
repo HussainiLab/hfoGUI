@@ -1043,7 +1043,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
             elif '.pos' in source_filename:
                 if source_filename not in self.loaded_sources.keys():
-                    posx, posy, post = getpos(source_filename, arena)
+                    posx, posy, post, Fs_pos = getpos(source_filename, arena)
 
                     # centering the positions
                     center = centerBox(posx, posy)
@@ -1080,7 +1080,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                     # posy = signal.savgol_filter(posy.flatten(), 15, 4).reshape((-1, 1))
 
                     # box car smoothing, closest we could get to replicating Tint's speeds
-                    B = np.ones((int(np.ceil(0.4 * 50)), 1)) / np.ceil(0.4 * 50)
+                    B = np.ones((int(np.ceil(0.4 * Fs_pos)), 1)) / np.ceil(0.4 * Fs_pos)
                     posx = scipy.ndimage.correlate(posx, B, mode='nearest')
                     posy = scipy.ndimage.correlate(posy, B, mode='nearest')
 
