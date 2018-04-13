@@ -8,7 +8,7 @@ import numpy as np
 from core.Tint_Matlab import *
 from core.GUI_Utils import *
 import pandas as pd
-import core.SignalProcessing as sp
+import core.filtering as filt
 
 
 class TreeWidgetItem(QtGui.QTreeWidgetItem):
@@ -1097,17 +1097,17 @@ def HilbertDetection(self):
     # band pass
 
     if self.max_freq != Fs/2 and self.min_freq != 0:
-        filtered_data = sp.Filtering().iirfilt(bandtype='band', data=raw_data, Fs=Fs,
+        filtered_data = filt.iirfilt(bandtype='band', data=raw_data, Fs=Fs,
                                                     Wp=self.min_freq, Ws=self.max_freq,
                                                     order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                     showresponse=0)
     elif self.max_freq == Fs/2:
-        filtered_data = sp.Filtering().iirfilt(bandtype='high', data=raw_data, Fs=Fs,
+        filtered_data = filt.iirfilt(bandtype='high', data=raw_data, Fs=Fs,
                                                Wp=self.min_freq, Ws=[],
                                                order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                showresponse=0)
     elif self.min_freq == 0:
-        filtered_data = sp.Filtering().iirfilt(bandtype='low', data=raw_data, Fs=Fs,
+        filtered_data = filt.iirfilt(bandtype='low', data=raw_data, Fs=Fs,
                                                Wp=self.max_freq, Ws=[],
                                                order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                showresponse=0)

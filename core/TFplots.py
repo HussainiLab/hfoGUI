@@ -6,7 +6,7 @@ import os, functools, warnings
 # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 # import matplotlib.pyplot as plt
 import numpy as np
-import core.SignalProcessing as sp
+import core.filtering as filt
 from core.GUI_Utils import center
 import pyqtgraph as pg
 from matplotlib import cm
@@ -332,7 +332,7 @@ class TFPlotWindow(QtGui.QWidget):
 
             notch_filter_frequency = self.stockwell_notch_filter.currentText()
             if notch_filter_frequency != 'None':
-                self.raw_data = sp.Filtering().notch_filt(self.raw_data, self.Fs, freq=int(notch_filter_frequency), band=10,
+                self.raw_data = filt.notch_filt(self.raw_data, self.Fs, freq=int(notch_filter_frequency), band=10,
                                             order=3)
 
             if self.upper_cutoff > self.Fs/2:
@@ -347,18 +347,18 @@ class TFPlotWindow(QtGui.QWidget):
             if self.filtered_data == []:
 
                 if self.lower_cutoff != 0 and self.upper_cutoff != self.Fs/2:
-                    self.filtered_data = sp.Filtering().iirfilt(bandtype='band', data=self.raw_data, Fs=self.Fs,
+                    self.filtered_data = filt.iirfilt(bandtype='band', data=self.raw_data, Fs=self.Fs,
                                                                 Wp=self.lower_cutoff, Ws=self.upper_cutoff,
                                                  order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                  showresponse=0)
                 elif self.lower_cutoff == 0:
-                    self.filtered_data = sp.Filtering().iirfilt(bandtype='low', data=self.raw_data, Fs=self.Fs,
+                    self.filtered_data = filt.iirfilt(bandtype='low', data=self.raw_data, Fs=self.Fs,
                                                                 Wp=self.upper_cutoff,
                                                                 order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                                 showresponse=0)
 
                 elif self.upper_cutoff == self.Fs/2:
-                    self.filtered_data = sp.Filtering().iirfilt(bandtype='high', data=self.raw_data, Fs=self.Fs,
+                    self.filtered_data = filt.iirfilt(bandtype='high', data=self.raw_data, Fs=self.Fs,
                                                                 Wp=self.lower_cutoff,
                                                                 order=3, automatic=0, Rp=3, As=60, filttype='butter',
                                                                 showresponse=0)

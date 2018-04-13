@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
-import core.SignalProcessing as sp
+import core.filtering as filt
 import scipy.signal as signal
 import scipy
 import pyqtgraph as pg
@@ -400,21 +400,21 @@ class GraphSettingsWindows(QtGui.QWidget):
                     pass
 
                 elif upper_cutoff >= Fs/2:
-                    b, a = sp.Filtering.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order,
+                    b, a = filt.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order,
                                                 analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
 
                 elif lower_cutoff <= 0:
-                    b, a = sp.Filtering.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order,
+                    b, a = filt.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order,
                                                 analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
                 else:
-                    b, a = sp.Filtering.iirfilt(self, 'band', [], Fs, Wp=lower_cutoff, Ws=upper_cutoff, order=order,
+                    b, a = filt.iirfilt(self, 'band', [], Fs, Wp=lower_cutoff, Ws=upper_cutoff, order=order,
                                                 analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
             elif 'Low' in bandtype:
-                b, a = sp.Filtering.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order, analog_val=False,
+                b, a = filt.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order, analog_val=False,
                                             Rp=0.1, As=60, filttype=filttype, output='b-a')
                 lower_cutoff = None
             elif 'High' in bandtype:
-                b, a = sp.Filtering.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order, analog_val=False,
+                b, a = filt.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order, analog_val=False,
                                             Rp=0.1, As=60, filttype=filttype, output='b-a')
                 upper_cutoff = None
             else:
@@ -467,7 +467,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                     upper_cutoff = Fs2 - 0.1
                     self.graph_header_option_fields[i_upper, j_upper + 1].setText(str(upper_cutoff))
 
-            f, H = sp.Filtering().fftbandpass(np.arange(1000), Fs, Fs1, lower_cutoff, upper_cutoff, Fs2, output='response')
+            f, H = filt.fftbandpass(np.arange(1000), Fs, Fs1, lower_cutoff, upper_cutoff, Fs2, output='response')
             # self.FilterResponseAxis.set_xlim(0.01, 2 * Fs2)
 
             # self.FilterResponseAxis.plot(f, H, 'b')
@@ -987,13 +987,13 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                             upper_cutoff = float(upper_cutoff)
 
-                            EEG = sp.Filtering().iirfilt(bandtype='low', data=EEGRaw, Fs=Fs, Wp=upper_cutoff, order=order,
+                            EEG = filt.iirfilt(bandtype='low', data=EEGRaw, Fs=Fs, Wp=upper_cutoff, order=order,
                                                          automatic=0, Rp=0.1, As=60, filttype=filter_method, showresponse=0)
 
                         elif 'high pass' in filter_type.lower():
                             lower_cutoff = float(lower_cutoff)
 
-                            EEG = sp.Filtering().iirfilt(bandtype='high', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, order=order,
+                            EEG = filt.iirfilt(bandtype='high', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, order=order,
                                                          automatic=0, Rp=0.1, As=60, filttype='butter', showresponse=0)
 
                         elif 'bandpass' in filter_type.lower():
@@ -1001,7 +1001,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                             lower_cutoff = float(lower_cutoff)
                             upper_cutoff = float(upper_cutoff)
 
-                            EEG = sp.Filtering().iirfilt(bandtype='band', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, Ws=upper_cutoff,
+                            EEG = filt.iirfilt(bandtype='band', data=EEGRaw, Fs=Fs, Wp=lower_cutoff, Ws=upper_cutoff,
                                                          order=order, automatic=0, Rp=0.1, As=60, filttype='butter',
                                                          showresponse=0)
                     else:
@@ -1025,7 +1025,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                         if Fs2 <= upper_cutoff:
                             upper_cutoff = Fs2 - 0.1
 
-                    EEG = sp.Filtering().fftbandpass(EEGRaw, Fs, Fs1, lower_cutoff, upper_cutoff, Fs2)
+                    EEG = filt.fftbandpass(EEGRaw, Fs, Fs1, lower_cutoff, upper_cutoff, Fs2)
 
 
                 EEGRaw = None
@@ -1033,7 +1033,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                 if 'none' not in notch_filter.lower():
                     '''notch filter at whichever frequency the user chose'''
                     notch_filter_frequency = int(notch_filter[:notch_filter.find(' Hz')])
-                    EEG = sp.Filtering().notch_filt(EEG, Fs, freq=notch_filter_frequency, band=10,
+                    EEG = filt.notch_filt(EEG, Fs, freq=notch_filter_frequency, band=10,
                                               order=3)
                 else:
                     '''Don't notch filter the data'''
