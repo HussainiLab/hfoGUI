@@ -79,7 +79,7 @@ def notch_filt(data, Fs, band=10, freq=60, ripple=1, order=2, filter_type='butte
     return filtered_data
 
 
-def iirfilt(bandtype, data, Fs, Wp, Ws=[], order=3, analog_val=False, automatic=1, Rp=3, As=60, filttype='butter',
+def iirfilt(bandtype, data, Fs, Wp, Ws=[], order=3, analog_val=False, automatic=0, Rp=3, As=60, filttype='butter',
             showresponse=0):
     '''Designs butterworth filter:
     Data is the data that you want filtered
@@ -229,6 +229,63 @@ def iirfilt(bandtype, data, Fs, Wp, Ws=[], order=3, analog_val=False, automatic=
         plt.show()
     if data != []:
         return filtered_data
+
+
+def custom_cheby1(data, Fs, N, Rp, Wp, Ws=None, filtresponse='bandpass', analog_value=False, showresponse=0):
+    nyquist = Fs/2
+
+    if filtresponse == 'bandpass':
+        Wn = [Wp/nyquist, Ws/nyquist]
+    else:
+        Wn = [Wp/nyquist]
+
+    b, a = signal.cheby1(N, Rp, Wn, 'bandpass', analog=analog_value)
+
+    if data != []:
+        if len(data.shape) > 1:
+            #print('Filtering multidimensional array!')
+            filtered_data = np.zeros((data.shape[0], data.shape[1]))
+            filtered_data = signal.filtfilt(b, a, data, axis=1)
+            #for channel_num in range(0, data.shape[0]):
+            #    # filtered_data[channel_num,:] = signal.lfilter(b, a, data[channel_num,:])
+            #    filtered_data[channel_num, :] = signal.filtfilt(b, a, data[channel_num, :])
+        else:
+            # filtered_data = signal.lfilter(b, a, data)
+            filtered_data = signal.filtfilt(b, a, data)
+
+    if showresponse == 1:
+        if showresponse == 1:  # set to 1 if you want to visualize the frequency response of the filter
+            FType = 'Chebyshev I'
+            mode = 'Digital'
+
+            w, h = signal.freqz(b, a, worN=8000)  # returns the requency response h, and the normalized angular
+            # frequencies w in radians/sample
+            # w (radians/sample) * Fs (samples/sec) * (1 cycle/2pi*radians) = Hz
+            f = Fs * w / (2 * np.pi)  # Hz
+
+            plt.figure(figsize=(10, 5))
+            # plt.subplot(211)
+            plt.semilogx(f, np.abs(h), 'b')
+            plt.xscale('log')
+
+            if Ws is not None:
+                plt.title('%s Bandpass Filter Frequency Response (Order = %s, Wp=%s (Hz), Ws =%s (Hz))'
+                          % (FType, N, Wp, Ws))
+            else:
+                plt.title('%s Lowpass Filter Frequency Response (Order = %s, Wp=%s (Hz))'
+                          % (FType, N, Wp))
+
+            plt.xlabel('Frequency(Hz)')
+            plt.ylabel('Gain [V/V]')
+            plt.margins(0, 0.1)
+            plt.grid(which='both', axis='both')
+            plt.axvline(Wp, color='green')
+            if Ws is not None:
+                plt.axvline(Ws, color='green')
+                # plt.plot(Ws, 0.5*np.sqrt(2), 'ko') # cutoff frequency
+            plt.show()
+
+    return filtered_data
 
 
 def dcblock(data, fc, fs=None, analog_val=False, showresponse=0):

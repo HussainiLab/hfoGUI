@@ -902,10 +902,12 @@ def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
 
     tf_plots_window.clearPlots()
 
+
 def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     """Updates the fields of the graph options window when the .set file changes"""
     if hasattr(main_window, 'scrollbar_thread'):
-        main_window.scrollbar_thread.quit()
+        # main_window.scrollbar_thread.quit()
+        main_window.scrollbar_thread.terminate()
 
     main_window.set_current_filename()  # update the new filename
 
