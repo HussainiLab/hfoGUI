@@ -878,6 +878,7 @@ def raise_detection_window(new_window, old_window):
         time.sleep(0.1)
         old_window.hide()
 
+
 def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
     main_window.loaded_data = {}
     main_window.current_time = 0
@@ -915,7 +916,7 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     main_window.get_parameters()
 
     # Loading the EEG
-    #desired_eeg_extgension = ['.eeg', '.egf']
+
     desired_set_extgension = ['.set', '.egf']
     if main_window.current_set_filename == '' or all(desired_set_extgension[i] not in main_window.current_set_filename for i in
                                           range(len(desired_set_extgension))):

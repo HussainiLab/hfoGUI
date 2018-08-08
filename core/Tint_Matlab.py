@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import numpy as np
 import struct, os
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy.matlib
 from scipy.io import savemat
 import mmap
@@ -57,12 +57,30 @@ def MatlabNumSeq(start, stop, step, exclude=True):
 
 
 class TintException(Exception):
-    def __init___(self,message):
-        Exception.__init__(self,"%s" % message)
+    def __init___(self, message):
+        Exception.__init__(self, "%s" % message)
         self.message = message
 
 
 def get_setfile_parameter(parameter, set_filename):
+    """
+    This function will return the parameter value of a given parameter name for a given set filename.
+
+    Example:
+        set_fullpath = 'C:\\example\\tetrode_1.1'
+        parameter_name = 'duration
+        duration = get_setfile_parameter(parameter_name, set_fullpath)
+
+    Args:
+        parameter (str): the name of the set file parameter that you want to obtain.
+        set_filename (str): the full path of the .set file that you want to obtain the parameter value from.
+
+
+    Returns:
+        parameter_value (str): the value for the given parameter
+
+    """
+
     if not os.path.exists(set_filename):
         return
 
@@ -203,11 +221,78 @@ def is_tetrode(file, session):
         return False
 
 
-def find_tet(set_fullpath):
-    '''finds the tetrode files available for a given .set file if there is a  .cut file existing'''
+def get_active_tetrode(set_filename):
+    """in the .set files it will say collectMask_X Y for each tetrode number to tell you if
+    it is active or not. T1 = ch1-ch4, T2 = ch5-ch8, etc."""
+    active_tetrode = []
+    active_tetrode_str = 'collectMask_'
 
-    tetrode_path, fname_set = os.path.split(set_fullpath)
-    fname_set, _ = os.path.splitext(fname_set)
+    with open(set_filename) as f:
+        for line in f:
+
+            # collectMask_X Y, where x is the tetrode number, and Y is eitehr on or off (1 or 0)
+            if active_tetrode_str in line:
+                tetrode_str, tetrode_status = line.split(' ')
+                if int(tetrode_status) == 1:
+                    # then the tetrode is saved
+                    tetrode_str.find('_')
+                    tet_number = int(tetrode_str[tetrode_str.find('_') + 1:])
+                    active_tetrode.append(tet_number)
+
+    return active_tetrode
+
+
+def get_active_eeg(set_filename):
+    """This will return a dictionary (cative_eeg_dict) where the keys
+    will be eeg channels from 1->64 which will represent the eeg suffixes (2 = .eeg2, 3 = 2.eeg3, etc)
+    and the key will be the channel that the EEG maps to (a channel from 0->63)"""
+    active_eeg = []
+    active_eeg_str = 'saveEEG_ch'
+
+    eeg_map = []
+    eeg_map_str = 'EEG_ch_'
+
+    active_eeg_dict = {}
+
+    with open(set_filename) as f:
+        for line in f:
+
+            if active_eeg_str in line:
+                # saveEEG_ch_X Y, where x is the eeg number, and Y is eitehr on or off (1 or 0)
+                _, status = line.split(' ')
+                active_eeg.append(int(status))
+            elif eeg_map_str in line:
+                # EEG_ch_X Y
+                _, chan = line.split(' ')
+                eeg_map.append(int(chan))
+
+                # active_eeg = np.asarray(active_eeg)
+                # eeg_map = np.asarray(eeg_map)
+
+    for i, status in enumerate(active_eeg):
+        if status == 1:
+            active_eeg_dict[i + 1] = eeg_map[i] - 1
+
+    return active_eeg_dict
+
+
+def is_egf_active(set_filename):
+    active_egf_str = 'saveEGF'
+
+    with open(set_filename) as f:
+        for line in f:
+
+            if active_egf_str in line:
+                _, egf_status = line.split(' ')
+
+                if int(egf_status) == 1:
+                    return True
+
+        return False
+
+
+def find_tet(set_fullpath):
+    """finds the tetrode files available for a given .set file if there is a  .cut file existing"""
 
     tetrode_path, fname_set = os.path.split(set_fullpath)
     fname_set, _ = os.path.splitext(fname_set)
@@ -535,6 +620,28 @@ def bits2uV(data, data_fpath, set_fpath=''):
 
 
 def getspikes(fullpath):
+    """
+    This function will return the spike data, spike times, and spike parameters from Tint tetrode data.
+
+    Example:
+        tetrode_fullpath = 'C:\\example\\tetrode_1.1'
+        ts, ch1, ch2, ch3, ch4, spikeparam = getspikes(tetrode_fullpath)
+
+    Args:
+        fullpath (str): the fullpath to the Tint tetrode file you want to acquire the spike data from.
+
+    Returns:
+        ts (ndarray): an Nx1 array for the spike times, where N is the number of spikes.
+        ch1 (ndarray) an NxM matrix containing the spike data for channel 1, N is the number of spikes,
+            and M is the chunk length.
+        ch2 (ndarray) an NxM matrix containing the spike data for channel 2, N is the number of spikes,
+            and M is the chunk length.
+        ch3 (ndarray) an NxM matrix containing the spike data for channel 3, N is the number of spikes,
+            and M is the chunk length.
+        ch4 (ndarray) an NxM matrix containing the spike data for channel 4, N is the number of spikes,
+            and M is the chunk length.
+        spikeparam (dict): a dictionary containing the header values from the tetrode file.
+    """
     spikes, spikeparam = importspikes(fullpath)
     ts = spikes['t']
     nspk = spikeparam['num_spikes']
@@ -615,100 +722,6 @@ def importspikes(filename):
     return {'t': t.reshape(num_spikes, 1), 'ch1': np.asarray(waveform_data[0][:][:]),
             'ch2': np.asarray(waveform_data[1][:][:]),
             'ch3': np.asarray(waveform_data[2][:][:]), 'ch4': np.asarray(waveform_data[3][:][:])}, spikeparam
-
-
-def AUP(waveform, t_peak, plot_on=False):
-    total_time = 1  # ms
-
-    t = np.linspace(1 / (len(waveform)), total_time, len(waveform))
-
-    t_peak = t[t_peak-1]
-
-    dy_dt = np.diff(waveform) / max(np.diff(waveform))  # approximating 1st derivative and normalizing
-
-    ## defining the baseline
-
-    # create boolean array where the 1st derivative is between +/-10% of max
-    # and t >= 200 microseconds since that is when the spike occurs
-
-    bool_vel = ((dy_dt <= 0.1) * (dy_dt >= -0.1)) * (t[:-1] <= t_peak)  #
-
-    # find the first set of consecutive values between +/-10% to determine baseline
-    if sum(bool_vel) == 0:
-        # then there are no datum that satisfy those conditions
-        consec_base = t <= 0.05
-        base = np.mean(waveform[consec_base])
-    else:
-        # bool_index_values = np.arange(len(bool_vel))[bool_vel]
-        bool_index_values = np.where(bool_vel)[0]
-
-        consec_base = [bool_index_values[0]]
-
-        for index, value in enumerate(bool_index_values):
-
-            if index == len(bool_index_values) - 1:
-                break
-
-            if bool_index_values[index + 1] == (value + 1):
-                consec_base.append(bool_index_values[index + 1])
-            else:
-                break
-
-        base = np.mean(waveform[consec_base])
-
-        if base == max(waveform):
-            consec_base = t <= 0.05
-            base = np.mean(waveform[consec_base])
-    # Find the points under baseline to identify hyperpolarization
-
-    # hyper_bool = (t>=0.2) & (waveform <= base)
-    # print(t[np.where(waveform == max(waveform))[0][0]])
-    hyper_bool = (t > t[np.where(waveform == max(waveform))[0][0]]) & (waveform <= base)
-
-    if sum(hyper_bool) == 0:
-        # then there are no values below baseline
-        aup = 0
-        hyper_consec = []
-    else:
-        # find the first set of consecutive hyperpolarization points
-        # hyper_index_values = np.arange(len(hyper_bool))[hyper_bool]
-        hyper_index_values = np.where(hyper_bool)[0]
-        hyper_consec = [hyper_index_values[0]]
-
-        #print(hyper_consec)
-
-        for index, value in enumerate(hyper_index_values):
-            if index == len(hyper_index_values) - 1:
-                break
-
-            if hyper_index_values[index + 1] == value + 1:
-                hyper_consec.append(hyper_index_values[index + 1])
-            else:
-                break
-
-        if hyper_consec[-1] == len(waveform) - 1:
-            # we need to see if
-            for index in range(len(hyper_consec), 0, -1):
-                pass
-
-        if len(hyper_consec) == 1:
-            aup = np.abs(waveform[hyper_consec] - base) / (t[1] - t[0])
-        else:
-            aup = np.trapz(abs(waveform[hyper_consec] - base), t[hyper_consec])
-
-    if plot_on:
-        base_y = np.array([base, base])
-        base_x = np.array([0, 1])
-        plt.figure()
-        waveform_plot = plt.plot(t, waveform, 'b', label='Waveform')
-        baseline_plot = plt.plot(base_x, base_y, 'r--', label='Average Baseline')
-        baseline_end = plt.plot(t[consec_base], waveform[consec_base], 'rx', ms=5, label='Baseline Values')
-        if len(hyper_consec) != 0:
-            baseline_end = plt.plot(t[hyper_consec], waveform[hyper_consec], 'go', ms=5, label='AUP Values')
-        plt.legend()
-        plt.show()
-
-    return aup
 
 
 def speed2D(x, y, t):
@@ -824,7 +837,6 @@ def visitedBins(x, y, mapAxis):
 
 def spikePos(ts, x, y, t, cPost, shuffleSpks, shuffleCounter=True):
 
-    #randomize the time to shuffle spikes
     randtime = 0
 
     if shuffleSpks:

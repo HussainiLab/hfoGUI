@@ -1081,8 +1081,10 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                     # box car smoothing, closest we could get to replicating Tint's speeds
                     B = np.ones((int(np.ceil(0.4 * Fs_pos)), 1)) / np.ceil(0.4 * Fs_pos)
-                    posx = scipy.ndimage.correlate(posx, B, mode='nearest')
-                    posy = scipy.ndimage.correlate(posy, B, mode='nearest')
+                    # posx = scipy.ndimage.correlate(posx, B, mode='nearest')
+                    posx = scipy.ndimage.convolve(posx, B, mode='nearest')
+                    # posy = scipy.ndimage.correlate(posy, B, mode='nearest')
+                    posy = scipy.ndimage.convolve(posy, B, mode='nearest')
 
                     speed = speed2D(posx, posy, post)
                     self.loaded_sources[source_filename] = [speed, 50]  # the raw data
