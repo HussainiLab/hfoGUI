@@ -84,7 +84,9 @@ def get_setfile_parameter(parameter, set_filename):
     if not os.path.exists(set_filename):
         return
 
-    with open(set_filename, 'r+') as f:
+    # adding the encoding because tint data is created via windows and if you want to run this in linux, you need
+    # to explicitly say this
+    with open(set_filename, 'r+', encoding='cp1252') as f:
         for line in f:
             if parameter in line:
                 if line.split(' ')[0] == parameter:
