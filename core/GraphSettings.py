@@ -1,5 +1,6 @@
-# from PyQt4 import QtCore, QtGui
-from core.GUI_Utils import *
+from core.GUI_Utils import Worker, find_consec, background, Communicate
+from core.Tint_Matlab import ReadEEG, get_setfile_parameter, find_unit, detect_peaks, bits2uV, getspikes, \
+    TintException, getpos, remBadTrack, speed2D, centerBox
 import os, time, json, functools, datetime
 from scipy.signal import hilbert
 # import matplotlib
@@ -12,11 +13,12 @@ import core.filtering as filt
 import scipy.signal as signal
 import scipy
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+from scipy import signal
+# from PyQt4 import QtCore, QtGui
 
 
 class update_plots_signal(QtCore.QObject):
-
-    # mysignal = QtCore.pyqtSignal(object, object, object)
     mysignal = QtCore.pyqtSignal(str, object, object, dict)
 
     # could have combined these two into a single signal... but who has time for that?
@@ -63,18 +65,16 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.mainWindow.vb.mouseDragEvent = self.drag  # overriding the drag event
 
         self.mainWindow.graphics_window.scene().sigMouseClicked.connect(self.mousePress)
-        # self.mainWindow.graphics_window.scene().sigMouseDragged.connect(self.mouseDrag)
 
         self.setWindowTitle("hfoGUI - Graph Settings Window")  # sets the title of the window
 
         main_location = main.frameGeometry().getCoords()
-        # self.show()
+
         self.setGeometry(main_location[2] - 1.5*main_location[-1] - 45, main_location[1] + 30, width, height)
 
         self.FilterResponse = plt.figure(figsize=(3, 3))
         self.FilterResponseCanvas = FigureCanvas(self.FilterResponse)
         self.FilterResponseAxis = self.FilterResponse.add_axes([0.1, 0.2, 0.85, 0.75], frameon=False)
-        # self.FilterResponseToolBar = NavigationToolbar(self.FilterResponseCanvas, self)
 
         FilterResponseLabel = QtGui.QLabel('Filter Response:')
         FilterResponse = QtGui.QVBoxLayout()
@@ -86,7 +86,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         self.graphs = QtGui.QTreeWidget()
         self.graphs.itemSelectionChanged.connect(self.sourceSelected)
-        # self.graphs.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)
+
         #  allowing the selection of multiple scores
         self.graph_header_options = ['Load Data Profile:', '', 'Save Profile', '', '', '',
                                      'Source:', '', 'Filter Method:', '', 'Filter Type:', '',
@@ -165,7 +165,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                 elif 'Cutoff' in parameter:
                     self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                    # self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
+
                     self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     self.graph_header_option_fields[i, j + 1].setDisabled(1)
@@ -179,11 +179,11 @@ class GraphSettingsWindows(QtGui.QWidget):
                 elif 'Order' in parameter:
                     self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                    # self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
+
                     self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setAlignment(
                         QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
-                    # self.graph_header_option_fields[i, j + 1].setDisabled(1)
+
                     self.graph_header_option_fields[i, j + 1].setText('3')
 
                     Order_layout = QtGui.QHBoxLayout()
@@ -195,7 +195,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                     self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                    # self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
+
                     self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setText('1')
                     self.graph_header_option_fields[i, j + 1].setAlignment(
@@ -209,7 +209,6 @@ class GraphSettingsWindows(QtGui.QWidget):
                 elif 'Save' in parameter:
                     self.save_profile_btn = QtGui.QPushButton('Save Profile')
                     self.save_profile_btn.clicked.connect(self.saveProfile)
-                    # self.graph_header_option_layout.addWidget(self.save_profile_btn, *(i, j))
 
                     self.load_profile_btn = QtGui.QPushButton('Load Profile')
                     self.load_profile_btn.clicked.connect(self.changeProfile)
@@ -258,15 +257,13 @@ class GraphSettingsWindows(QtGui.QWidget):
         layout_order = [self.graphs, FilterResponse, self.graph_header_option_layout, btn_layout]
 
         layout_score = QtGui.QVBoxLayout()
-        # layout_score.addStretch(1)
+
         for order in layout_order:
             if 'Layout' in order.__str__():
                 layout_score.addLayout(order)
-                # layout_score.addStretch(1)
+
             else:
-                # layout_score.addWidget(order, 0, QtCore.Qt.AlignCenter)
                 layout_score.addWidget(order)
-                # layout_score.addStretch(1)
 
         self.setDefaultOptions()
         self.setLayout(layout_score)
@@ -324,11 +321,9 @@ class GraphSettingsWindows(QtGui.QWidget):
     def update_progress(self, action, kwargs):
 
         if 'setText' in action:
-
             self.progdialog.setLabelText(kwargs['text'])
 
         elif 'setValue' in action:
-
             self.progdialog.setValue(kwargs['value'])
 
     def plot_response(self):
@@ -400,22 +395,36 @@ class GraphSettingsWindows(QtGui.QWidget):
                     pass
 
                 elif upper_cutoff >= Fs/2:
-                    b, a = filt.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
+                    b, a = filt.get_a_b('high', Fs, lower_cutoff, [], order=order, Rp=0.1, As=60, analog_val=False,
+                                        filttype=filttype)
+                    '''b, a = filt.iirfilt('high', [], Fs=Fs, Wp=lower_cutoff, order=order,
+                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
 
                 elif lower_cutoff <= 0:
-                    b, a = filt.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
+                    b, a = filt.get_a_b('low', Fs, upper_cutoff, [], order=order, Rp=0.1, As=60, analog_val=False,
+                                        filttype=filttype)
+                    '''b, a = filt.iirfilt('low', [], Fs=Fs, Wp=upper_cutoff, Ws=[], order=order,
+                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
                 else:
-                    b, a = filt.iirfilt(self, 'band', [], Fs, Wp=lower_cutoff, Ws=upper_cutoff, order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype, output='b-a')
+
+                    b, a = filt.get_a_b('band', Fs, lower_cutoff, upper_cutoff, order=order, Rp=0.1, As=60,
+                                        analog_val=False, filttype=filttype)
+
+                    '''b, a = filt.iirfilt('band', [], Fs=Fs, Wp=lower_cutoff, Ws=upper_cutoff, order=order,
+                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
             elif 'Low' in bandtype:
-                b, a = filt.iirfilt(self, 'low', [], Fs, Wp=upper_cutoff, Ws=[], order=order, analog_val=False,
-                                            Rp=0.1, As=60, filttype=filttype, output='b-a')
+
+                b, a = filt.get_a_b('low', Fs, upper_cutoff, [], order=order, Rp=0.1, As=60,
+                                    analog_val=False, filttype=filttype)
+
+                '''b, a = filt.iirfilt('low', [], Fs=Fs, Wp=upper_cutoff, Ws=[], order=order, analog_val=False,
+                                            Rp=0.1, As=60, filttype=filttype)'''
                 lower_cutoff = None
             elif 'High' in bandtype:
-                b, a = filt.iirfilt(self, 'high', [], Fs, Wp=lower_cutoff, Ws=[], order=order, analog_val=False,
-                                            Rp=0.1, As=60, filttype=filttype, output='b-a')
+                b, a = filt.get_a_b('high', Fs, lower_cutoff, [], order=order, Rp=0.1, As=60,
+                                    analog_val=False, filttype=filttype)
+                '''b, a = filt.iirfilt('high', [], Fs=Fs, Wp=lower_cutoff, Ws=[], order=order, analog_val=False,
+                                            Rp=0.1, As=60, filttype=filttype)'''
                 upper_cutoff = None
             else:
                 return
@@ -431,24 +440,16 @@ class GraphSettingsWindows(QtGui.QWidget):
                 # w (radians/sec) * (1 cycle/2pi*radians) = Hz
                 f = w / (2 * np.pi)  # Hz
 
-            # plt.figure(figsize=(10, 5))
-            # plt.subplot(211)
             self.FilterResponseAxis.semilogx(f, np.abs(h), 'b')
             self.FilterResponseAxis.set_xscale('log')
-            # self.FilterResponseAxis.margins(0, 0.1)
 
             if 'low' in bandtype.lower():
                 self.FilterResponseAxis.axvline(upper_cutoff, color='green')
-                # self.FilterResponseAxis.set_xlim(0.01, 2 * upper_cutoff)
             elif 'high' in bandtype.lower():
                 self.FilterResponseAxis.axvline(lower_cutoff, color='green')
-                # self.FilterResponseAxis.set_xlim(0.01, 2 * lower_cutoff)
             else:
                 self.FilterResponseAxis.axvline(upper_cutoff, color='green')
                 self.FilterResponseAxis.axvline(lower_cutoff, color='green')
-                # #elf.FilterResponseAxis.set_xlim(0.01, 2 * upper_cutoff)
-
-                # plt.plot(cutoff, 0.5*np.sqrt(2), 'ko') # cutoff frequency
 
         else:
             # get the response of an arbitrary 10 seconds worth of data
@@ -468,9 +469,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                     self.graph_header_option_fields[i_upper, j_upper + 1].setText(str(upper_cutoff))
 
             f, H = filt.fftbandpass(np.arange(1000), Fs, Fs1, lower_cutoff, upper_cutoff, Fs2, output='response')
-            # self.FilterResponseAxis.set_xlim(0.01, 2 * Fs2)
 
-            # self.FilterResponseAxis.plot(f, H, 'b')
             self.FilterResponseAxis.semilogx(f, H, 'b')
 
             self.FilterResponseAxis.axvline(upper_cutoff, color='green')
@@ -503,12 +502,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             vlines = custom_vlines(x, y[0], y[1], **kwargs)
             self.mainWindow.Graph_axis.addItem(vlines)
 
-            '''
-            [self.mainWindow.Graph_axis.addItem(pg.InfiniteLine(pos=peak_time, angle=90, movable=False,
-                                                bounds=[0,
-                                                        y],
-                                                pen=(0, 0, 0))) for peak_time in x]
-                                                '''
             self.mainWindow.Graph_axis.setClipToView(True)
         elif source == 'PlotSpikes':
             if 'colors' in kwargs.keys():
@@ -520,13 +513,11 @@ class GraphSettingsWindows(QtGui.QWidget):
     def mouse_slot(self, action):
         if action == 'create':
             self.mainWindow.mouse_vLine = pg.InfiniteLine(angle=90, movable=False)
-            # self.mainWindow.mouse_hLine = pg.InfiniteLine(angle=0, movable=False)
+
             self.mainWindow.Graph_axis.addItem(self.mainWindow.mouse_vLine, ignoreBounds=True)
-            # self.mainWindow.Graph_axis.addItem(self.mainWindow.mouse_hLine, ignoreBounds=True)
 
             self.mainWindow.proxy = pg.SignalProxy(self.mainWindow.Graph_axis.scene().sigMouseMoved, rateLimit=100,
                                    slot=self.mainWindow.mouseMoved)
-
 
     def changeFilter(self, i, j):
         lower = False
@@ -588,7 +579,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.graph_header_option_fields[i_type, j_type + 1].setEnabled(1)
 
     def validateSource(self, action):
-
         # check that the Source is valid
         for option_value, (i, j) in self.graph_header_option_positions.items():
             if 'Source' in option_value:
@@ -674,13 +664,9 @@ class GraphSettingsWindows(QtGui.QWidget):
             self.mainWindow.ErrorDialogue.myGUI_signal.emit("ZeroCutoffError")
             while self.mainWindow.choice == '':
                 time.sleep(0.1)
-
             return
 
         if 'add' in action:
-
-
-
             self.addSource()
         elif 'update' in action:
             self.updateSource()
@@ -744,7 +730,6 @@ class GraphSettingsWindows(QtGui.QWidget):
                                     value = 'Yes'
                                 else:
                                     value = 'No'
-
                         else:
                             value = 'N/A'
 
@@ -795,11 +780,9 @@ class GraphSettingsWindows(QtGui.QWidget):
                                     self.graph_header_option_fields[i, j + 1].toggle()
                                 else:
                                     pass
-
                         option_index += 1
 
     def Plot(self):
-
         self.mainWindow.get_parameters()
 
         self.progress_signal.start_signal.emit('start')
@@ -808,8 +791,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             time.sleep(0.1)
 
         graph_axis = self.mainWindow.Graph_axis
-
-        # time.sleep(0.1)
 
         while self.plotting:
             time.sleep(0.1)
@@ -834,8 +815,6 @@ class GraphSettingsWindows(QtGui.QWidget):
         session_path, set_filename = os.path.split(self.mainWindow.current_set_filename)
         session = os.path.splitext(set_filename)[0]
 
-        # print(self.graphs.topLevelItemCount())
-
         iterator = QtGui.QTreeWidgetItemIterator(self.graphs)
 
         # define the location in the QTreeWidget where our variables are located
@@ -850,7 +829,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         # iterate through each graph added
         self.progress_signal.mysignal.emit('setText', {'text': 'Collecting Source Information'})
-        # self.progdialog.setLabelText('Collecting Source Information')
 
         while iterator.value():
             graph_item = iterator.value()  # define the current graph + data within the graph item
@@ -965,13 +943,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                     # Interpolating the EEG to increase the array length by a factor of 10
 
-                    # EEG_times_original = 1000 * np.linspace(0, len(EEGRaw) / Fs, num=len(EEGRaw), endpoint=False)  # The original EEG times (ms)
-                    # Fs_interp = Fs * 10  # the new sampling rate due to the interpolation
-                    # EEG_times = 1000 * np.linspace(0, len(EEGRaw) / Fs, num=10 * len(EEGRaw), endpoint=False)  # the interpolated EEG times
-
-                    # EEGRaw = np.interp(EEG_times, EEG_times_original, EEGRaw)  # the new interpolated EEG values
-
-                    # self.loaded_sources[source_filename] = [EEGRaw.copy(), Fs_interp]
                     self.loaded_sources[source_filename] = [EEGRaw, Fs]
                     EEG_times = None
                     EEGRaw = None
@@ -1027,7 +998,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                     EEG = filt.fftbandpass(EEGRaw, Fs, Fs1, lower_cutoff, upper_cutoff, Fs2)
 
-
                 EEGRaw = None
 
                 if 'none' not in notch_filter.lower():
@@ -1056,28 +1026,11 @@ class GraphSettingsWindows(QtGui.QWidget):
                     posx, posy, post = remBadTrack(posx, posy, post,
                                                    threshold)  # removing bad tracks (faster than threshold)
 
-
-                    # nonNanValues = [index[0] for index in enumerate(posx) if np.isnan(posx[index[0]]) == False]
-                    # nonNanValues = np.where(np.isnan(posx) is False)[0]
                     nonNanValues = np.where(np.isnan(posx) == False)[0]
                     # removing any NaNs
                     post = post[nonNanValues]
                     posx = posx[nonNanValues]
                     posy = posy[nonNanValues]
-
-                    """
-                    # try smoothing the positions before taking the speed
-                    for index in range(7, len(posx) - 7):
-                        if index == len(posx) - 8:
-                            posx[index] = np.nanmean(posx[index - 7:])
-                            posy[index] = np.nanmean(posy[index - 7:])
-                        else:
-                            posx[index] = np.nanmean(posx[index - 7:index + 7 + 1])
-                            posy[index] = np.nanmean(posy[index - 7:index + 7 + 1])
-                    """
-
-                    # posx = signal.savgol_filter(posx.flatten(), 15, 4).reshape((-1, 1))
-                    # posy = signal.savgol_filter(posy.flatten(), 15, 4).reshape((-1, 1))
 
                     # box car smoothing, closest we could get to replicating Tint's speeds
                     B = np.ones((int(np.ceil(0.4 * Fs_pos)), 1)) / np.ceil(0.4 * Fs_pos)
@@ -1104,9 +1057,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             # self.progdialog.setValue(self.progress_value)
             iterator += 1
 
-        # self.rectangle_selector()
-        # self.rectangle_selector = pg.LinearRegionItem([400, 700])
-
         # ------------------ the rectangle selection option END-----------------------------------------
 
         # find the difference in amplitudes
@@ -1125,7 +1075,6 @@ class GraphSettingsWindows(QtGui.QWidget):
             if len(self.mainWindow.active_tetrodes) > 0:
                 # if self.cell_spike_time_array == []:
                 if self.tetrode_spikes == {}:
-                    #self.spike_colors = ['k', 'b', 'g', 'r', 'c', 'm', 'y', ]
 
                     # the spike colors below are in RGB format and were taken from an
                     # image color picker, they should match the colors in Tint,
@@ -1197,16 +1146,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                     spike_colors = self.tetrode_spikes[tetrode_key]['colors']
                     for i in range(len(spike_times)):
                         cell_spike_times = spike_times[i]
-                        '''
-                        graph_axis.vlines(cell_spike_times, current_cell_raster_minimum,
-                                          current_cell_raster_minimum + raster_spike_height,
-                                          lw=2, colors=self.spike_color_list[i])
-                                          
-                        [graph_axis.addItem(pg.InfiniteLine(pos=spike_time, angle=90, movable=False,
-                                                 bounds=[current_cell_raster_minimum,
-                                                         current_cell_raster_minimum + raster_spike_height],
-                                                 pen=(0, 0, 0))) for spike_time in cell_spike_times]
-                        '''
+
                         # plots the vertical lines, the InfiniteLine does not plot an array like vlines, so we need to do
                         # a for loop, this method could be significantly slower
                         self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
@@ -1271,16 +1211,6 @@ class GraphSettingsWindows(QtGui.QWidget):
                 data_times = 1000 * np.linspace(0, len(data) / Fs, num=len(data), endpoint=False)
                 peak_indices = detect_peaks(data, mpd=1, threshold=0)
                 peak_times = data_times[peak_indices]
-                '''
-                graph_axis.vlines(peak_times, 0,
-                                  previous_source_max,
-                                  lw=1, linestyles='dashed')
-                                  
-                [graph_axis.addItem(pg.InfiniteLine(pos=peak_time, angle=90, movable=False,
-                                                    bounds=[0,
-                                                            previous_source_max],
-                                                    pen=(0, 0, 0))) for peak_time in peak_times]
-                '''
 
                 self.newData.mysignal.emit('MarkPeaks', peak_times,
                                            np.array([0, previous_source_max]), {'pen': (0, 0, 0),
@@ -1314,17 +1244,6 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.mainWindow.scrollbar.setPageStep(2000)
         self.mainWindow.scrollbar.setSingleStep(1000)
 
-        '''
-        graph_axis.axis([self.mainWindow.current_time, self.mainWindow.current_time +
-                         self.mainWindow.windowsize, 0, self.mainWindow.graph_max])
-        '''
-
-        '''
-        try:
-            self.mainWindow.GraphCanvas.draw()
-        except IndexError:
-            pass
-        '''
         self.plotting = False
         # update the iterator to continue with the next graph
 
@@ -1725,22 +1644,19 @@ def findfile(filename, search_directory, directory_search_max=3):
     searched_directories = []
     filename_fullpath = ''
 
-    while directories_searched < directory_search_max and set_filepath == '':
+    while directories_searched < directory_search_max and filename_fullpath == '':
         for root, _, files in os.walk(search_directory, topdown=False):
-
-            if files == []:
+            if len(files) == 0:
                 continue
-
             if any(avoid_directories[i] in root for i in range(len(avoid_directories))):
                 continue
-
-            if [file for file in searched_directories if file == root] != []:
+            if len([file for file in searched_directories if file == root]) > 0:
                 continue
             else:
                 searched_directories.append(root)
 
             filename_match = [file for file in files if filename in file]
-            if filename_match == []:
+            if len(filename_match) == 0:
                 continue
             else:
                 filename_fullpath = os.path.join(root, filename)
@@ -1798,7 +1714,7 @@ class custom_vlines(pg.GraphicsObject):
 
     def dataBounds(self, axis, frac=1.0, orthoRange=None):
         if axis == 0:
-            return None   ## x axis should never be auto-scaled
+            return None   # x axis should never be auto-scaled
         else:
             return (0, 0)
 

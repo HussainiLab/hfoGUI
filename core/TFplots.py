@@ -1,7 +1,7 @@
-from core.TFA_Functions import *
+from core.TFA_Functions import stran_psd
 from scipy.signal import hilbert
-from core.GUI_Utils import *
-import os, functools, warnings
+from core.GUI_Utils import Worker, CustomViewBox, background
+import os
 # from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 # import matplotlib.pyplot as plt
@@ -12,7 +12,8 @@ import pyqtgraph as pg
 from matplotlib import cm
 from matplotlib.colors import ColorConverter
 # import pyqtgraph.widgets.MatplotlibWidget as matplot
-from PyQt4 import QtCore, QtGui
+# from PyQt4 import QtCore, QtGui
+from pyqtgraph.Qt import QtGui, QtCore
 from scipy import interpolate
 import time
 

@@ -1,12 +1,13 @@
-from PyQt4 import QtCore, QtGui
-from core.GUI_Utils import *
+# from PyQt4 import QtCore, QtGui
+from pyqtgraph.Qt import QtGui, QtCore
+from core.GUI_Utils import background, center, find_consec
 # import matplotlib
 # matplotlib.use('QT4Agg')
-import os, time, json, functools, datetime, sys
+import os, time, json, functools
 from scipy.signal import hilbert
 import numpy as np
-from core.Tint_Matlab import *
-from core.GUI_Utils import *
+from core.Tint_Matlab import detect_peaks
+from core.GUI_Utils import Worker
 import pandas as pd
 import core.filtering as filt
 

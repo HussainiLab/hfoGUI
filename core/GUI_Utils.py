@@ -2,9 +2,10 @@
 # from PyQt4 import QtGui, QtCore
 # import matplotlib
 # matplotlib.use('QT4Agg')
-from core.Tint_Matlab import *
+# from core.Tint_Matlab import *
 import pyqtgraph as pg
-from PyQt4 import QtGui, QtCore
+# from PyQt4 import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore
 import exporters
 import os
 
@@ -54,8 +55,8 @@ def center(self):
 
 
 class Communicate(QtCore.QObject):
-    '''A custom pyqtsignal so that errors and popups can be called from the threads
-    to the main window'''
+    """A custom pyqtsignal so that errors and popups can be called from the threads
+    to the main window"""
     myGUI_signal = QtCore.pyqtSignal(str)
 
 

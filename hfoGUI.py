@@ -3,14 +3,20 @@
 # matplotlib.use('QT4Agg')
 # from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 # from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-# import pyqtgraph as pg
+import pyqtgraph as pg
 # import matplotlib.pyplot as plt
 # import pylab as plt
 import numpy as np
+from pyqtgraph.Qt import QtGui, QtCore
+import sys
+import os
+import time
+import functools
 
-from core.GraphSettings import *
-from core.Score import *
-from core.TFplots import *
+from core.GUI_Utils import background, Communicate, CustomViewBox, center, Worker
+from core.GraphSettings import GraphSettingsWindows
+from core.Score import ScoreWindow
+from core.TFplots import TFPlotWindow
 
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
