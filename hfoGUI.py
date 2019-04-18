@@ -1,11 +1,4 @@
-# from pyqtgraph.Qt import QtGui, QtCore
-# import matplotlib
-# matplotlib.use('QT4Agg')
-# from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-# from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import pyqtgraph as pg
-# import matplotlib.pyplot as plt
-# import pylab as plt
 import numpy as np
 from pyqtgraph.Qt import QtGui, QtCore
 import sys

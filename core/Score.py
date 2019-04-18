@@ -1,8 +1,5 @@
-# from PyQt4 import QtCore, QtGui
 from pyqtgraph.Qt import QtGui, QtCore
 from core.GUI_Utils import background, center, find_consec
-# import matplotlib
-# matplotlib.use('QT4Agg')
 import os, time, json, functools
 from scipy.signal import hilbert
 import numpy as np

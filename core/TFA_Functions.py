@@ -1,7 +1,6 @@
 import scipy
 import numpy as np
 from pyfftw.interfaces import scipy_fftpack as fftw
-# from scipy.io import savemat
 
 
 def gauss_window(length, freq, factor):

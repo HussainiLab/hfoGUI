@@ -3,19 +3,15 @@ from core.Tint_Matlab import ReadEEG, get_setfile_parameter, find_unit, detect_p
     TintException, getpos, remBadTrack, speed2D, centerBox
 import os, time, json, functools, datetime
 from scipy.signal import hilbert
-# import matplotlib
-# matplotlib.use("Qt4Agg")
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-# from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import numpy as np
 import core.filtering as filt
-import scipy.signal as signal
 import scipy
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 from scipy import signal
-# from PyQt4 import QtCore, QtGui
+import numpy as np
 
 
 class update_plots_signal(QtCore.QObject):
@@ -1105,7 +1101,12 @@ class GraphSettingsWindows(QtGui.QWidget):
                         if not os.path.exists(cut_file):
                             pass
 
-                        units, available_units = find_unit(os.path.dirname(tetrode_file), [tetrode_file])
+                        units, available_units = find_unit([tetrode_file])
+
+                        available_units = []
+                        for list_ in units:
+                            available_units.append(np.unique(list_))
+
                         available_units = available_units[0]
                         spike_times, _, _, _, _, _ = getspikes(tetrode_file)
 

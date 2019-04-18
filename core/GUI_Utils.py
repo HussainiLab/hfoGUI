@@ -1,10 +1,4 @@
-# import os
-# from PyQt4 import QtGui, QtCore
-# import matplotlib
-# matplotlib.use('QT4Agg')
-# from core.Tint_Matlab import *
 import pyqtgraph as pg
-# from PyQt4 import QtGui, QtCore
 from pyqtgraph.Qt import QtGui, QtCore
 import exporters
 import os
