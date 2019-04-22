@@ -99,10 +99,6 @@ class ScoreWindow(QtGui.QWidget):
         scorer_layout.addWidget(scorer_filename_label)
         scorer_layout.addWidget(self.scorer)
 
-        # score_layout_with_buttons = QtGui.QHBoxLayout()
-        # score_layout_with_buttons.addLayout(score_layout_with_buttons)
-        # score_layout_with_buttons.addLayout(score_filename_layout)
-
         source_label = QtGui.QLabel("Source:")
         self.source = QtGui.QComboBox()
         self.source.setEditable(True)
@@ -127,7 +123,6 @@ class ScoreWindow(QtGui.QWidget):
 
         self.score_headers = {'ID#:': 0, "Score:": 1, "Start Time(ms):": 2, "Stop Time(ms):": 3, "Scorer:": 4,
                               "Settings File:": 5}
-        # self.scores.setSelectionMode(QtGui.QAbstractItemView.MultiSelection) # allowing the selection of multiple scores
 
         for key, value in self.score_headers.items():
             self.scores.headerItem().setText(value, key)
@@ -173,20 +168,15 @@ class ScoreWindow(QtGui.QWidget):
             btn_layout.addWidget(button)
         # ------------------ layout ------------------------------
 
-        # layout_order = [score_layout_with_buttons, self.scores, score_layout, btn_layout]
         layout_order = [score_filename_btn_layout, score_filename_layout,  scorer_layout, self.scores, score_layout,
                         btn_layout]
 
         layout_score = QtGui.QVBoxLayout()
-        # layout_score.addStretch(1)
         for order in layout_order:
             if 'Layout' in order.__str__():
                 layout_score.addLayout(order)
-                # layout_score.addStretch(1)
             else:
-                # layout_score.addWidget(order, 0, QtCore.Qt.AlignCenter)
                 layout_score.addWidget(order)
-                # layout_score.addStretch(1)
 
         # ------- EOI widgets -----------
 
@@ -254,10 +244,7 @@ class ScoreWindow(QtGui.QWidget):
         self.EOI.setSortingEnabled(True)
         self.EOI.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.EOI.customContextMenuRequested.connect(functools.partial(self.openMenu, 'EOI'))
-        # self.EOI.setSelectionMode(QtGui.QAbstractItemView.MultiSelection)  # allowing the selection of multiple scores
-        # self.EOI.headerItem().setText(0, "Score:")
         self.EOI_headers = {'ID#:': 0, "Start Time(ms):": 1, "Stop Time(ms):": 2, 'Settings File:': 3}
-        # self.scores.setSelectionMode(QtGui.QAbstractItemView.MultiSelection) # allowing the selection of multiple scores
 
         for key, value in self.EOI_headers.items():
             self.EOI.headerItem().setText(value, key)
@@ -289,11 +276,8 @@ class ScoreWindow(QtGui.QWidget):
         for item in [eoi_button_layout, eoi_filename_layout, eoi_parameter_layout, self.EOI, EOI_score_layout, btn_layout]:
             if 'Layout' in item.__str__():
                 layout_eoi.addLayout(item)
-                # layout_score.addStretch(1)
             else:
-                # layout_score.addWidget(item, 0, QtCore.Qt.AlignCenter)
                 layout_eoi.addWidget(item)
-                # layout_score.addStretch(1)
 
         score_tab.setLayout(layout_score)
 
@@ -306,12 +290,11 @@ class ScoreWindow(QtGui.QWidget):
         for item in [source_layout, tabs]:
             if 'Layout' in item.__str__():
                 window_layout.addLayout(item)
-                # layout_score.addStretch(1)
             else:
-                # layout_score.addWidget(item, 0, QtCore.Qt.AlignCenter)
                 window_layout.addWidget(item)
                 # layout_score.addStretch(1)
 
+        self.hilbert_thread = QtCore.QThread()
         self.setLayout(window_layout)
 
     def initialize_attributes(self):
@@ -512,7 +495,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename = QtGui.QFileDialog.getOpenFileName(self, 'Load Scores',
+        save_filename, save_fileextension = QtGui.QFileDialog.getOpenFileName(self, 'Load Scores',
                                                           save_filename,
                                                           'Text Files (*.txt)')
         if save_filename == '':
@@ -564,6 +547,9 @@ class ScoreWindow(QtGui.QWidget):
             elif 'Start' in key:
                 start_value = value
 
+            elif 'Score:' in key:
+                score_value = value
+
         for score_index in range(N):
             # item = QtGui.QTreeWidgetItem()
             item = TreeWidgetItem()
@@ -595,7 +581,10 @@ class ScoreWindow(QtGui.QWidget):
                             item.setText(value, str(df[column][score_index]))
 
                     # these next statements are for the older files
-                    elif 'Score' in column and 'Score:' in key:
+                    elif 'Score:' in column and 'Score:' in key:
+                        item.setText(value, str(df[column][score_index]))
+
+                    elif 'Scorer:' in column and 'Scorer:' in key:
                         item.setText(value, str(df[column][score_index]))
 
                     elif 'Start' in column and 'Start' in key:
@@ -618,7 +607,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename = QtGui.QFileDialog.getSaveFileName(self, 'Save Scores',
+        save_filename, save_file_extension = QtGui.QFileDialog.getSaveFileName(self, 'Save Scores',
                                                           save_filename,
                                                           'Text Files (*.txt)')
 
@@ -631,6 +620,7 @@ class ScoreWindow(QtGui.QWidget):
         start_times = []
         stop_times = []
         ids = []
+        scorer = []
 
         for key, value in self.score_headers.items():
             if 'Score:' in key:
@@ -641,6 +631,8 @@ class ScoreWindow(QtGui.QWidget):
                 stop_value = value
             elif 'ID' in key:
                 id_value = value
+            elif 'Scorer:' in key:
+                scorer_value = value
 
         for item_count in range(self.scores.topLevelItemCount()):
             item = self.scores.topLevelItem(item_count)
@@ -649,6 +641,7 @@ class ScoreWindow(QtGui.QWidget):
             scores.append(item.data(score_value, 0))
             start_times.append(item.data(start_value, 0))
             stop_times.append(item.data(stop_value, 0))
+            scorer.append(item.data(scorer_value, 0))
 
         data_dict = {}
         for key, value in self.score_headers.items():
@@ -664,29 +657,15 @@ class ScoreWindow(QtGui.QWidget):
             elif 'Stop' in key:
                 data_dict[key] = pd.Series(stop_times)
 
+            elif 'Scorer' in key:
+                data_dict[key] = pd.Series(scorer)
+
         df = pd.DataFrame(data_dict)
 
         # make the directory name if it does not exists already
         if not os.path.exists(os.path.dirname(save_filename)):
             os.makedirs(os.path.dirname(save_filename))
 
-        '''
-        # Qt's open save dialog prompts this question already
-        if os.path.exists(save_filename):
-            # prompt the user if they want to overwrite the existing save filename
-
-            self.mainWindow.choice = ''
-            self.mainWindow.ErrorDialogue.myGUI_signal.emit("ScoreFileExists:%s" % save_filename)
-
-            while self.mainWindow == '':
-                time.sleep(0.1)
-
-            if self.mainWindow.choice == QtGui.QMessageBox.Yes:
-                df.to_csv(save_filename, sep='\t')
-
-        else:
-            df.to_csv(save_filename, sep='\t')
-        '''
         df.to_csv(save_filename, sep='\t')
 
     def updateActiveSources(self):
@@ -897,7 +876,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename = QtGui.QFileDialog.getOpenFileName(self, 'Load EOI\'s',
+        save_filename, save_string_ext = QtGui.QFileDialog.getOpenFileName(self, 'Load EOI\'s',
                                                  save_filename,
                                                  'Text Files (*.txt)')
         if save_filename == '':
@@ -1009,7 +988,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename = QtGui.QFileDialog.getSaveFileName(self, 'Save EOI\'s',
+        save_filename, save_extension = QtGui.QFileDialog.getSaveFileName(self, 'Save EOI\'s',
                                                  save_filename,
                                                  'Text Files (*.txt)')
 
@@ -1034,7 +1013,6 @@ class ScoreWindow(QtGui.QWidget):
 
         for item_count in range(self.EOI.topLevelItemCount()):
             item = self.EOI.topLevelItem(item_count)
-            # scores.append(item.data(0, 0))
 
             ids.append(item.data(id_value, 0))
             start_times.append(item.data(start_value, 0))
@@ -1055,28 +1033,10 @@ class ScoreWindow(QtGui.QWidget):
 
         # get filename
 
-        # save_filename = self.get_automatic_detection_filename()
-
         # make the directory name if it does not exists already
         if not os.path.exists(os.path.dirname(save_filename)):
             os.makedirs(os.path.dirname(save_filename))
-        '''
-        if os.path.exists(save_filename):
-            # prompt the user if they want to overwrite the existing save filename
 
-            self.mainWindow.choice = ''
-            self.mainWindow.ErrorDialogue.myGUI_signal.emit("ScoreFileExists:%s" % save_filename)
-
-            while self.mainWindow == '':
-                time.sleep(0.1)
-
-            if self.mainWindow.choice == QtGui.QMessageBox.Yes:
-                df.to_csv(save_filename, sep='\t')
-
-        else:
-            df.to_csv(save_filename, sep='\t')
-
-        '''
         df.to_csv(save_filename, sep='\t')
 
 
@@ -1112,7 +1072,7 @@ def HilbertDetection(self):
 
     filtered_data -= np.mean(filtered_data)  # removing DC offset
     t = (1000 / Fs) * np.arange(len(filtered_data))
-    # t = 1000 * np.arange(len(filtered_data)) / Fs
+
     # calculate the hilbert transformation of the filtered signal
     analytic_signal = hilbert(filtered_data)  # time consuming
     hilbert_envelope = np.abs(analytic_signal)
@@ -1212,7 +1172,7 @@ def HilbertDetection(self):
         eoi_find_start_time = None
         eoi_starts = None
 
-        ############ now finding the stop times ###################
+        #  now finding the stop times  #
 
         # getting the data after the end of each event to find the end time
         eoi_find_stop_indices = np.asarray(
@@ -1269,9 +1229,6 @@ def HilbertDetection(self):
         for eoi_index, eoi in enumerate(window_EOIs):
 
             if eoi_index != 0:
-                # print(latest_time, latest_index)
-                # print(eoi)
-                # print('----------')
                 within_previous_bool = (eoi <= latest_time)
                 if sum(within_previous_bool) == 2:
                     # this next eoi is within the previous one
@@ -1297,7 +1254,6 @@ def HilbertDetection(self):
             i += epoch_window + 1
             continue
         # merging EOIs within 10ms of each other
-        # print(window_EOIs.shape)
 
         latest_time = window_EOIs[0, -1]
         latest_index = 0
@@ -1323,14 +1279,13 @@ def HilbertDetection(self):
         if len(window_EOIs) == 0:
             i += epoch_window + 1
             continue
-        # print(window_EOIs.shape)
         # removing EOIs less than X ms
 
         rejected_eois = np.where(np.diff(window_EOIs) < self.min_duration)[0]
         if len(rejected_eois > 0):
             window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)  # removing rejected EOIs
 
-        ######## end of where for loop used to be ##############
+        # end of where for loop used to be  #
 
         i += epoch_window + 1
 
@@ -1730,7 +1685,7 @@ class HilbertParametersWindow(QtGui.QWidget):
             with open(self.scoreWindow.settings_fname, 'w') as f:
                 json.dump(settings, f)
 
-        self.scoreWindow.hilbert_thread = QtCore.QThread()
+
         self.scoreWindow.hilbert_thread.start()
         self.scoreWindow.hilbert_thread_worker = Worker(HilbertDetection, self.scoreWindow)
         self.scoreWindow.hilbert_thread_worker.moveToThread(self.scoreWindow.hilbert_thread)

@@ -1,23 +1,20 @@
 import pyqtgraph as pg
 import numpy as np
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore, QtWidgets
 import sys
 import os
 import time
 import functools
-
-from core.GUI_Utils import background, Communicate, CustomViewBox, center, Worker
+from core.GUI_Utils import background, Communicate, CustomViewBox, center, Worker, raise_w
 from core.GraphSettings import GraphSettingsWindows
 from core.Score import ScoreWindow
 from core.TFplots import TFPlotWindow
+from core.ChooseFile import ChooseFile, new_File
 
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
-Large_Font = ("Arial", 11)  # defines two fonts for different purposes (might not be used
-Small_Font = ("Arial", 8)
 
-
-class Window(QtGui.QWidget):  # defines the window class (main window)
+class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
     def __init__(self):  # initializes the main window
         super(Window, self).__init__()
@@ -26,8 +23,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
-        # pg.setConfigOptions(antialias=True)
-        # pg.setConfigOption('leftButtonPan', False)
 
         if getattr(sys, 'frozen', False):
             # frozen
@@ -44,6 +39,9 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
         self.ErrorDialogue = Communicate()
         self.ErrorDialogue.myGUI_signal.connect(self.PopUpMessage)
 
+        self.scrollbar_thread = QtCore.QThread()
+        self.plot_thread = QtCore.QThread()
+
         self.home()  # runs the home function
 
     def home(self):  # defines the home function (the main window)
@@ -52,21 +50,21 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         # ------ buttons + widgets -----------------------------
 
-        self.graph_settings_btn = QtGui.QPushButton("Graph Settings", self)
+        self.graph_settings_btn = QtWidgets.QPushButton("Graph Settings", self)
         self.graph_settings_btn.setToolTip("Click if you want to add/remove waveforms, and edit the graph")
 
-        self.score_btn = QtGui.QPushButton("Score", self)
+        self.score_btn = QtWidgets.QPushButton("Score", self)
         self.score_btn.setToolTip("Click if you want to score the EEG file")
 
-        quit_btn = QtGui.QPushButton("Quit", self)
+        quit_btn = QtWidgets.QPushButton("Quit", self)
         quit_btn.clicked.connect(self.close_app)
         quit_btn.setShortcut("Ctrl+Q")
         quit_btn.setToolTip('Click to quit (or press Ctrl+Q)')
 
-        self.TF_btn = QtGui.QPushButton("T-F Plots", self)
+        self.TF_btn = QtWidgets.QPushButton("T-F Plots", self)
         self.TF_btn.setToolTip("Click to open a window showing the Time-Frequency plots (Stockwell)")
 
-        btn_layout = QtGui.QHBoxLayout()
+        btn_layout = QtWidgets.QHBoxLayout()
 
         button_order = [self.graph_settings_btn, self.score_btn, self.TF_btn, quit_btn]
         for button in button_order:
@@ -77,14 +75,14 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
             mod_date = time.ctime(os.path.getmtime(sys.executable))  # finds the modification date of the program
 
-            vers_label = QtGui.QLabel(
+            vers_label = QtWidgets.QLabel(
                 os.path.splitext(os.path.basename(sys.executable))[0] + " V1.1 - Last Updated: " + mod_date)
 
         else:
 
             mod_date = time.ctime(os.path.getmtime(__file__))  # finds the modification date of the program
 
-            vers_label = QtGui.QLabel(
+            vers_label = QtWidgets.QLabel(
                 os.path.splitext(os.path.basename(__file__))[0] + " V1.1 - Last Updated: " + mod_date)
 
         # ------------- grid layout ------------------------
@@ -97,7 +95,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
         self.main_window_field_positions = {}
 
         positions = [(i, j) for i in range(2) for j in range(7)]
-        self.main_window_layout = QtGui.QGridLayout()
+        self.main_window_layout = QtWidgets.QGridLayout()
 
         for (i, j), parameter in zip(positions, self.main_window_parameters):
 
@@ -106,23 +104,20 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             else:
                 self.main_window_field_positions[parameter] = (i, j)
                 if 'Import' in parameter:
-                    self.main_window_fields[i, j] = QtGui.QPushButton(parameter, self)
-                    self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i,j))
+                    self.main_window_fields[i, j] = QtWidgets.QPushButton(parameter, self)
+                    self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
 
                 elif 'Set Filename' in parameter:
-                    self.main_window_fields[i, j] = QtGui.QLabel(parameter)
+                    self.main_window_fields[i, j] = QtWidgets.QLabel(parameter)
                     self.main_window_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-                    #self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
-                    self.main_window_fields[i, j + 1] = QtGui.QLineEdit()
+                    self.main_window_fields[i, j + 1] = QtWidgets.QLineEdit()
                     self.main_window_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     self.main_window_fields[i, j + 1].setText('Import a Set file!')
-                    #self.main_window_fields[i, j + 1].textChanged.connect(ImportSet)
 
-                    filename_layout = QtGui.QHBoxLayout()
+                    filename_layout = QtWidgets.QHBoxLayout()
                     filename_layout.addWidget(self.main_window_fields[i, j])
                     filename_layout.addWidget(self.main_window_fields[i, j + 1])
                     self.main_window_layout.addLayout(filename_layout, i, j, 1, 3)
-                    #self.main_window_layout.addWidget(self.main_window_fields[i, j + 1], i, j + 1, 1, 5)
 
         # ------------------- setting the graph -----------------------
         self.GraphLoaded = False
@@ -135,9 +130,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
         # adds the axis with custom viewbox to override the right click
         self.Graph_axis = self.graphics_window.addPlot(row=1, col=0, viewBox=CustomViewBox(self, self.graphics_window))
         self.Graph_axis.hideButtons()
-        # self.Graph_axis
-
-        # self.Graph_axis = self.graphics_window.addPlot(row=1, col=0)
 
         self.vb = self.Graph_axis.vb
 
@@ -145,14 +137,13 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         self.Graph_axis.setLabel('bottom', "Time", units='ms')  # adds the x label
 
-        self.GraphLayout = QtGui.QVBoxLayout()
+        self.GraphLayout = QtWidgets.QVBoxLayout()
         self.GraphLayout.addLayout(self.main_window_layout)
 
         self.GraphLayout.addWidget(self.graphics_window)
 
-        self.scrollbar = QtGui.QScrollBar(QtCore.Qt.Horizontal)
+        self.scrollbar = QtWidgets.QScrollBar(QtCore.Qt.Horizontal)
 
-        # self.scrollbar.actionTriggered.connect(self.ScrollGraph)
         self.scrollbar.actionTriggered.connect(functools.partial(self.changeCurrentGraph, 'scroll'))
         self.GraphLayout.addWidget(self.scrollbar)
         self.current_time = []
@@ -166,7 +157,7 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
         self.graph_parameter_field_positions = {}
 
         positions = [(i, j) for i in range(1) for j in range(10)]
-        self.graph_parameter_layout = QtGui.QGridLayout()
+        self.graph_parameter_layout = QtWidgets.QGridLayout()
 
         for (i, j), parameter in zip(positions, self.graph_parameters):
 
@@ -176,14 +167,14 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                 self.graph_parameter_field_positions[parameter] = (i, j)
 
                 if 'Plot' in parameter:
-                    self.graph_parameter_fields[i, j+1] = QtGui.QCheckBox(parameter)
+                    self.graph_parameter_fields[i, j+1] = QtWidgets.QCheckBox(parameter)
                     self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j + 1], i, j + 1)
 
                 else:
 
-                    self.graph_parameter_fields[i, j] = QtGui.QLabel(parameter)
+                    self.graph_parameter_fields[i, j] = QtWidgets.QLabel(parameter)
                     self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j], *(i, j))
-                    self.graph_parameter_fields[i, j + 1] = QtGui.QLineEdit()
+                    self.graph_parameter_fields[i, j + 1] = QtWidgets.QLineEdit()
                     self.graph_parameter_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j + 1], i, j+1)
                     if 'Window Size' in parameter:
@@ -191,18 +182,15 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                         self.graph_parameter_fields[i, j + 1].textChanged.connect(self.ChangeWindowSize)
                     elif 'Amplitude' in parameter:
                         pass
-                        #self.graph_parameter_fields[i, j + 1].textChanged.connect(self.setCurrentTime)
                     elif 'Current Time' in parameter:
                         self.i_current_time, self.j_current_time = (i, j)
                         self.graph_parameter_fields[i, j + 1].textChanged.connect(functools.partial(self.changeCurrentGraph, 'text'))
-                        pass
-                        #self.graph_parameter_fields[i, j + 1].textChanged.connect(self.setCurrentTime)
                     elif 'Start Time' in parameter or 'Stop Time' in parameter:
                         self.graph_parameter_fields[i, j + 1].textChanged.connect(self.changeEventTimes)
 
         # ------------- layout ------------------------------
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
 
         layout_order = [self.GraphLayout, self.graph_parameter_layout, btn_layout]
 
@@ -273,10 +261,10 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         # pop up window that asks if you really want to exit the app ------------------------------------------------
 
-        choice = QtGui.QMessageBox.question(self, "Quitting ",
+        choice = QtWidgets.QMessageBox.question(self, "Quitting ",
                                             "Do you really want to exit?",
-                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-        if choice == QtGui.QMessageBox.Yes:
+                                            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        if choice == QtWidgets.QMessageBox.Yes:
             sys.exit()  # tells the app to quit
         else:
             pass
@@ -290,10 +278,8 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             self.scrollbar.setPageStep(self.windowsize/1000 * self.SourceFs / 3)
             self.scrollbar.setSingleStep(self.windowsize/1000 * self.SourceFs / 15)
             self.scrollbar.setValue((self.current_time/1000)*self.SourceFs)
-            # self.Graph_axis.axis([self.current_time, self.current_time + self.windowsize, 0, self.graph_max])
             self.Graph_axis.setXRange(self.current_time, self.current_time + self.windowsize)
             self.Graph_axis.setYRange(0, self.graph_max)
-            # self.GraphCanvas.draw()
 
     def ScrollGraph(self):
         '''This method makes the current time field match the scrollbar value'''
@@ -320,43 +306,17 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             time.sleep(0.1)
             self.previous_current_time = 0
 
-        '''
-        avgFps = 0
-        avg_fps = []
-        times = []
-        '''
-
         while self.GraphLoaded:
-            # now = pg.ptime.time()
-
-            # time1 = pg.ptime.time()
             self.get_parameters()  # sets the current time
             self.get_scroll_values()
-            # times.append(pg.ptime.time() - time1)
 
             try:
                 if self.current_time < 0:
                     pass
                 try:
                     if self.previous_current_time != self.current_time:
-                        # self.Graph_axis.axis([self.current_time, self.current_time + self.windowsize, 0, self.graph_max])
                         self.Graph_axis.setXRange(self.current_time, self.current_time + self.windowsize, padding=0)
-                        # self.Graph_axis.setYRange(self.current_time, self.current_time + self.windowsize, padding=0)
-
-                        # self.GraphCanvas.draw()
                         self.previous_current_time = self.current_time
-                        # time.sleep(0.001) # stops the figure from flashing white when the graph is re-drawn
-
-                        '''
-                        try:
-                            fps = 1.0 / (now - self.last_update)
-                            avgFps = avgFps * 0.8 + fps * 0.2
-                            avg_fps.append(avgFps)
-                            # print(avgFps)
-                        except:
-                            pass
-                        self.last_update = now
-                        '''
 
                 except AttributeError:
                     pass
@@ -368,11 +328,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
 
         window_minimum = self.current_time
         window_maximum = self.current_time + self.windowsize
-
-        #window_minimum_index = (window_minimum / 1000) * self.SourceFs
-        #window_maximum_index = (window_maximum / 1000) * self.SourceFs
-
-        #return int(window_minimum_index), int(window_maximum_index)
 
         return window_minimum, window_maximum
 
@@ -442,10 +397,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                 except ValueError:
                     self.windowsize = None
 
-            # elif 'Amp' in parameter:
-            #     if self.graph_parameter_fields[position[0], position[1] + 1].text() == '':
-            #         continue
-            #     self.amplitude = float(self.graph_parameter_fields[position[0], position[1] + 1].text())
             elif 'Current Time' in parameter:
                 if self.graph_parameter_fields[position[0], position[1] + 1].text() == '':
                     continue
@@ -470,97 +421,99 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
     def PopUpMessage(self, error):
 
         if 'NoSetBits2uV' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Bits2uV Error - No .Set File!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Bits2uV Error - No .Set File!",
                                                      "Bits2uV requires access to the .Set file for\n" +
                                                      "the appropriate parameters to convert from bits\n" +
                                                      "to micro-volts. The .Set file isn't in the directory,\n" +
                                                      "do you want hfoGUI to find the .Set file?",
-                                                     QtGui.QMessageBox.Yes | QtGui.QMessageBox.Abort)
+                                                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Abort)
 
         elif 'NoAutoSet' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: .Set Search Error!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: .Set Search Error!",
                                                      "The appropriate .Set file could not be found after\n" +
                                                      "attempting to search for it through various directories,\n" +
                                                      "on this PC. Please place the .Set file in the same directory\n" +
                                                      "as the .EEG file!",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'NoScorer' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: No Scorer!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: No Scorer!",
                                                      "Before scoring please type in the 'Scorer' Field who\n" +
                                                      "is scoring this file, then you can continue!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'ImportSetError' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: No Set Imported!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: No Set Imported!",
                                                      "Import a '.set' file before continuing!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'InvalidSourceFname' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Invalid Source filename!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Invalid Source filename!",
                                                      "The source filename you have chosen does not exist!\n" +
                                                      "please choose an existing filename!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'NegativeCutoff' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Negative Cutoff Error!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Negative Cutoff Error!",
                                                      "Please choose positive cutoff values!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'InvalidCutoff' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Invalid Cutoff!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Invalid Cutoff!",
                                                      "The chosen cutoff is invalid!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'EGFNecessary' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Cutoff Too High!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Cutoff Too High!",
                                                      "The EEG files are sampled at 250 Hz thus,\n" +
                                                      "the cutoff needs to be below 125 Hz!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'InvalidEGFCutoff' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: EGF Cutoff Too High!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: EGF Cutoff Too High!",
                                                      "The EGF files are sampled at 4800 Hz thus,\n" +
                                                      "the cutoff needs to be below 2400 Hz!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'ScoreFileExists' in error:
 
             filename = error[error.find(':')+1:]
-            self.choice = QtGui.QMessageBox.question(self, "Error: Score Filename Exists!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Score Filename Exists!",
                                                      "The filename already exists, do you want to\n" +
                                                      "overwrite this score filename!\n\n" +
                                                      "Filename: %s\n" % filename,
-                                                     QtGui.QMessageBox.Yes | QtGui.QMessageBox.Cancel)
+                                                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
 
         elif 'MemoryError' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Memory Error!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Memory Error!",
                                                      "This action caused a memory error!",
-                                                     QtGui.QMessageBox.Yes | QtGui.QMessageBox.Cancel)
+                                                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.Cancel)
 
         elif 'ScoreFileExistError' in error:
 
             filename = error[error.find(':') + 1:]
-            self.choice = QtGui.QMessageBox.question(self, "Error: Score Filename Doesn't Exist!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Score Filename Doesn't Exist!",
                                                      "The filename doesn't exist there we cannot load scores,\n" +
                                                      "please score a file before trying to load it!\n\n" +
                                                      "Filename: %s\n" % filename,
-                                                     QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+                                                     QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
         elif 'InvalidDetectionParam' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Invalid Automatic Detection Parameter!",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Invalid Automatic Detection Parameter!",
                                                      "One of designated parameters is invalid,\n" +
                                                      "please use the correct parameter format!\n",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
         elif 'ZeroCutoffError' in error:
-            self.choice = QtGui.QMessageBox.question(self, "Error: Zero Cutoff Error",
+            self.choice = QtWidgets.QMessageBox.question(self, "Error: Zero Cutoff Error",
                                                      "A filter cutoff value is set to zero, this is not allowed. If you want" +
                                                      "to include zero, use a lowpass filter.",
-                                                     QtGui.QMessageBox.Ok)
+                                                     QtWidgets.QMessageBox.Ok)
 
     def changeEventTimes(self):
-        '''This method will change the Start Time and Stop Time fields, as well as plot these locations as a vertical
-        line'''
+        '''
+        This method will change the Start Time and Stop Time fields, as well as plot these locations as a vertical
+        line
+        '''
         if not hasattr(self, 'graph_max'):
             return
 
@@ -580,7 +533,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-
         if start_time is not None and stop_time is not None:
             if start_time >= stop_time:
                 # re-arranges the order if the stop time is ever smaller than the start_time
@@ -597,10 +549,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-            '''
-            self.start_line = self.Graph_axis.vlines(self.start_time, 0, self.graph_max, lw=2, 
-                                                     color='r', linestyles='dashed')
-            '''
             self.start_line = pg.InfiniteLine(pos=start_time, angle=90, pen=(255, 0, 0))
 
             self.Graph_axis.addItem(self.start_line)
@@ -619,11 +567,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-            '''
-            self.stop_line = self.Graph_axis.vlines(self.stop_time, 0,
-                                                                          self.graph_max, lw=2,
-                                                                          color='g', linestyles='dashed')
-            '''
             self.stop_line = pg.InfiniteLine(pos=stop_time, angle=90,
                                               pen=(0, 255, 0))
 
@@ -633,249 +576,6 @@ class Window(QtGui.QWidget):  # defines the window class (main window)
                 self.stop_line.remove()
             except:
                 pass
-
-        # self.GraphCanvas.draw()
-
-
-class ChooseFile(QtGui.QWidget):
-    '''A popup widget that will occur when the user presses the Choose Set button
-    on the main window'''
-    def __init__(self, main, source):
-        super(ChooseFile, self).__init__()
-        background(self)
-        width = self.deskW / 5
-        height = self.deskH / 5
-        self.setGeometry(0, 0, width, height)
-
-        if 'lfp' in source.lower():
-
-            if getattr(sys, 'frozen', False):
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(sys.executable))[
-                        0] + " - Choose LFP File")  # sets the title of the window
-
-            else:
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(__file__))[
-                        0] + " - Choose LFP File")  # sets the title of the window
-
-
-            # ---------------- defining instructions -----------------
-            instr = QtGui.QLabel("Choose the LFP file that you want to analyze!")
-
-            # -------------------------------------------------------
-            for key, val in main.main_window_field_positions.items():
-                if 'LFP Filename' in key:
-                    i_file, j_file = val
-
-            self.choosebtn = QtGui.QPushButton('Choose an LFP file!', self)
-            self.choosebtn.setToolTip('Click to choose an LFP file!')
-            self.cur_file_t = QtGui.QLabel('Current LFP Filepath:')  # the label saying Current Set file
-
-            applybtn = QtGui.QPushButton('Apply', self)
-            applybtn.clicked.connect(lambda: self.apply_file(main, 'LFP'))
-
-        elif 'eeg' in source.lower():  # then Import EEG was pressed
-
-            if getattr(sys, 'frozen', False):
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(sys.executable))[
-                        0] + " - Choose EEG File")  # sets the title of the window
-
-            else:
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(__file__))[
-                        0] + " - Choose EEG File")  # sets the title of the window
-
-            # ---------------- defining instructions -----------------
-            instr = QtGui.QLabel("Choose the EEG file that you want to analyze!")
-
-            # -------------------------------------------------------
-            for key, val in main.main_window_field_positions.items():
-                if 'EEG Filename' in key:
-                    i_file, j_file = val
-
-            self.choosebtn = QtGui.QPushButton('Choose an EEG file!', self)
-            self.choosebtn.setToolTip('Click to choose an EEG file!')
-            self.cur_file_t = QtGui.QLabel('Current EEG Filepath:')  # the label saying Current Set file
-
-            applybtn = QtGui.QPushButton('Apply', self)
-            applybtn.clicked.connect(lambda: self.apply_file(main, 'EEG'))
-
-        elif 'set' in source.lower():
-
-            if getattr(sys, 'frozen', False):
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(sys.executable))[
-                        0] + " - Choose Set File")  # sets the title of the window
-
-            else:
-
-                self.setWindowTitle(
-                    os.path.splitext(os.path.basename(__file__))[
-                        0] + " - Choose Set File")  # sets the title of the window
-
-
-            # ---------------- defining instructions -----------------
-            instr = QtGui.QLabel("Choose the Set file that you want to analyze!")
-
-            # -------------------------------------------------------
-            for key, val in main.main_window_field_positions.items():
-                if 'Set Filename' in key:
-                    i_file, j_file = val
-            applybtn = QtGui.QPushButton('Apply', self)
-            applybtn.clicked.connect(lambda: self.apply_file(main, 'Set'))
-
-            self.choosebtn = QtGui.QPushButton('Choose a Set file!', self)
-            self.choosebtn.setToolTip('Click to choose a Set file!')
-
-            self.cur_file_t = QtGui.QLabel('Current Set Filepath:')  # the label saying Current Set file
-
-        # replace the main window with the new .set filename
-        cur_file_name = main.main_window_fields[i_file, j_file + 1].text()
-
-        # ----------------- buttons ----------------------------
-
-        self.cur_file_e = QtGui.QLineEdit() # the label that states the current set filename
-        self.cur_file_e.setText(cur_file_name)
-        self.cur_file_e.setAlignment(QtCore.Qt.AlignHCenter)
-        self.cur_file_name = cur_file_name
-
-        self.backbtn = QtGui.QPushButton('Back',self)
-
-
-        # ----------------- setting layout -----------------------
-
-        layout_file = QtGui.QVBoxLayout()
-
-        layout_h1 = QtGui.QHBoxLayout()
-        layout_h1.addWidget(self.cur_file_t)
-        layout_h1.addWidget(self.cur_file_e)
-
-        btn_layout = QtGui.QHBoxLayout()
-        btn_order = [self.choosebtn, applybtn, self.backbtn]
-
-        # btn_layout.addStretch(1)
-        for butn in btn_order:
-            btn_layout.addWidget(butn)
-            # btn_layout.addStretch(1)
-
-        layout_order = [instr, layout_h1, btn_layout]
-
-        layout_file.addStretch(1)
-        for order in layout_order:
-            if 'Layout' in order.__str__():
-                layout_file.addLayout(order)
-                layout_file.addStretch(1)
-            else:
-                layout_file.addWidget(order, 0, QtCore.Qt.AlignCenter)
-                layout_file.addStretch(1)
-
-        self.setLayout(layout_file)
-
-        center(self)
-        # self.show()
-
-    def apply_file(self, main, source):
-
-        self.cur_file_name = str(self.cur_file_e.text())
-        main.file_fname = self.cur_file_name
-        # find the position of the .set filename in the main window
-        if 'lfp' in source.lower():
-            for key, val in main.main_window_field_positions.items():
-                if 'LFP Filename' in key:
-                    i_file, j_file = val
-        elif 'eeg' in source.lower():
-            for key, val in main.main_window_field_positions.items():
-                if 'EEG Filename' in key:
-                    i_file, j_file = val
-        else:
-            for key, val in main.main_window_field_positions.items():
-                if 'Set Filename' in key:
-                    i_file, j_file = val
-
-        # replace the main window with the new .set filename
-        self.backbtn.animateClick()
-        main.main_window_fields[i_file, j_file + 1].setText(os.path.realpath(self.cur_file_name))
-
-
-def new_File(self, main, source):
-    '''A function that will be used from the Choose Set popup window that will
-    produce a popup so the user can pick a filename for the .set file'''
-    # prompt user to pick a .set file
-
-    if 'set' in source.lower():
-        cur_file_name = str(QtGui.QFileDialog.getOpenFileName(self, "Select a Set file!", '', 'Set Files (*.set)'))
-
-    # if no file chosen, skip
-    if cur_file_name == '':
-        return
-
-    # replace the current .set field in the choose .set window with chosen filename
-    self.cur_file_name = cur_file_name
-    self.cur_file_e.setText(cur_file_name)
-    return
-
-@QtCore.pyqtSlot()
-def raise_w(new_window, old_window, source=''):
-    """ raise the current window"""
-    if 'ChooseFile' in str(new_window):
-
-        if 'lfp' in source.lower():
-            for key, val in old_window.main_window_field_positions.items():
-                if 'LFP Filename' in key:
-                    i, j = val
-                    break
-        elif 'eeg' in source.lower():
-            for key, val in old_window.main_window_field_positions.items():
-                if 'EEG Filename' in key:
-                    i, j = val
-                    break
-        elif 'set' in source.lower():
-            for key, val in old_window.main_window_field_positions.items():
-                if 'Set Filename' in key:
-                    i, j = val
-                    break
-
-        new_window.cur_file_e.setText(old_window.main_window_fields[i, j + 1].text())  # setting the current text field
-        new_window.raise_()
-        new_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        new_window.show()
-        time.sleep(0.1)
-
-    elif any(x in str(new_window) for x in ['Score','GraphSettings','TFPlot', 'PSDPlot']):
-        new_window.raise_()
-        #new_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        new_window.show()
-        time.sleep(0.1)
-    elif "Choose" in str(old_window):
-        time.sleep(0.1)
-        old_window.hide()
-        return
-    else:
-        new_window.raise_()
-        new_window.show()
-        time.sleep(0.1)
-        old_window.hide()
-
-@QtCore.pyqtSlot()
-def raise_detection_window(new_window, old_window):
-    """ raise the current window"""
-    if any(analysis in str(new_window) for analysis in ['Hilbert', ]):
-        new_window.raise_()
-        new_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        new_window.show()
-        time.sleep(0.1)
-    else:
-        new_window.raise_()
-        new_window.show()
-        time.sleep(0.1)
-        old_window.hide()
 
 
 def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
@@ -888,7 +588,6 @@ def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
     main_window.GraphLoaded = False
 
     main_window.Graph_axis.clear()
-    # main_window.GraphCanvas.draw()
 
     # clear current scores
     score_window.scores.clear()
@@ -906,7 +605,6 @@ def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
 def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     """Updates the fields of the graph options window when the .set file changes"""
     if hasattr(main_window, 'scrollbar_thread'):
-        # main_window.scrollbar_thread.quit()
         main_window.scrollbar_thread.terminate()
 
     main_window.set_current_filename()  # update the new filename
@@ -935,7 +633,7 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     eeg_files = [file for file in directory_file_list if set_basename+'.eeg' in file or set_basename+'.egf' in file]
     lfp_files = []
     main_window.active_tetrodes = []
-    #undesired_extensions = ['.ini', '.cut', '.clu', '.txt', '.ini']
+
     invalid_types = ['.clu', '.eeg', '.egf', '.set', '.cut', '.fmask', '.fet', '.klg', '.pos', '.SET', '.ini', '.txt']
     lfp_files = [file for file in directory_file_list
                 if not any(x in file for x in invalid_types) and not os.path.isdir(os.path.join(set_directory, file))
@@ -944,9 +642,6 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     pos_files = [file for file in directory_file_list if set_basename+'.pos' in file or set_basename+'.egf' in file]
 
     source_files = eeg_files + pos_files
-    #desired_file_list = [file for file in directory_file_list and any(x not in file for x in undesired_extensions)]
-
-    #[[lfp_files.append(file)for file in desired_file_list if set_basename+'.%d' % i in file]  for i in range(256)]
 
     [main_window.active_tetrodes.append(int((os.path.splitext(file)[1])[1:])) for file in lfp_files]
     for option, position in graph_options_window.graph_header_option_positions.items():
@@ -975,9 +670,6 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
 
     clear_all(main_window, graph_options_window, score_window, tf_plots_window)
 
-    # proxy = pg.SignalProxy(self.mainWindow.Graph_axis.scene().sigMouseMoved, rateLimit=60, slot=self.mainWindow.mouseMoved)
-
-    main_window.scrollbar_thread = QtCore.QThread()
     main_window.scrollbar_thread.start()
     main_window.scrollbar_thread_worker = Worker(main_window.setCurrentTime)
     main_window.scrollbar_thread_worker.moveToThread(main_window.scrollbar_thread)
@@ -987,7 +679,7 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
 def plotCheckChanged(main_window, settings_window):
 
     # make sure that it only plots the spikes if there are sources on the GraphSettingsWindow widget
-    iterator = QtGui.QTreeWidgetItemIterator(settings_window.graphs)
+    iterator = QtWidgets.QTreeWidgetItemIterator(settings_window.graphs)
 
     source_count = 0
     while iterator.value():
@@ -1000,9 +692,7 @@ def plotCheckChanged(main_window, settings_window):
 
 
 def run():
-    app = QtGui.QApplication(sys.argv)
-
-    # app = pg.mkQApp()
+    app = QtWidgets.QApplication(sys.argv)
 
     main_w = Window()  # calling the main window
 
@@ -1036,8 +726,6 @@ def run():
     main_w.graph_settings_btn.clicked.connect(lambda: raise_w(setting_w, main_w))
     main_w.main_window_fields[i_set_btn, j_set_btn].clicked.connect(lambda: raise_w(chooseSet, main_w, source='Set'))
     main_w.graph_parameter_fields[i_plot, j_plot+1].stateChanged.connect(lambda: plotCheckChanged(main_w, setting_w))
-    # main_w.graph_parameter_fields[i_start, j_start + 1].textChanged.connect(setting_w.changeEventTimes)
-    # main_w.graph_parameter_fields[i_stop, j_stop + 1].textChanged.connect(setting_w.changeEventTimes)
 
     chooseSet.choosebtn.clicked.connect(lambda: new_File(chooseSet, main_w, "Set"))
     chooseSet.backbtn.clicked.connect(lambda: raise_w(main_w, chooseSet))
@@ -1052,7 +740,6 @@ def run():
 
     main_w.TF_btn.clicked.connect(lambda: raise_w(tf_plot_w, main_w))
 
-
     tf_plot_w.hide_btn.clicked.connect(lambda: raise_w(main_w, tf_plot_w))
 
     setting_w.ActiveSourceSignal.myGUI_signal.connect(tf_plot_w.updateActiveSources)
@@ -1061,8 +748,6 @@ def run():
     main_w.start_time_object =  main_w.graph_parameter_fields[i_start, j_start + 1]
     main_w.stop_time_object =  main_w.graph_parameter_fields[i_stop, j_stop + 1]
 
-    # hilbert_w = HilbertParametersWindow(main_w, score_w)
-
     setting_w.RePlotTFSignal.myGUI_signal.connect(tf_plot_w.RePlot)
 
     sys.exit(app.exec_())  # prevents the window from immediately exiting out
@@ -1070,8 +755,3 @@ def run():
 
 if __name__ == '__main__':
     run()  # the command that calls run()
-
-    # import profile
-    # pr = profile.Profile()
-    # res = pr.run('run()')
-    # res.print_stats()

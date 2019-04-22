@@ -1,23 +1,38 @@
-import sys
-from cx_Freeze import setup, Executable
+import setuptools
 
-# Dependencies are automatically detected, but it might need fine tuning.
-#build_exe_options = {"packages": ["os"], "excludes": ["tkinter"]}
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
-# GUI applications require a different base on Windows (the default is for a
-# console application).
+pkgs = setuptools.find_packages()
+print('found these packages:', pkgs)
 
-base = None
-#if sys.platform == "win32":
-#    base = "Win32GUI"
+pkg_name = "hfoGUI"
 
-additional_imports = ['numpy.core._methods', 'numpy.lib.format', "matplotlib.backends.backend_tkagg",
-                      'scipy.spatial', 'tkinter.filedialog']
-
-packages = ['matplotlib', 'scipy', 'scipy.spatial', 'pyqtgraph']
-
-setup(name="hfoGUIV2",
-      version="1.0",
-      description="Software designed to view .EEG and .EGF files created with Axona's data acquisition software.",
-      options={"build_exe": {'packages': packages, 'includes': additional_imports}},
-      executables=[Executable("hfoGUI.py", base=base)])
+setuptools.setup(
+    name=pkg_name,
+    version="1.0.3",
+    author="Geoffrey Barrett",
+    author_email="geoffrey.m.barrett@gmail.com",
+    description="hfoGUI - a data visualization GUI for TINT data.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/HussainiLab/hfoGUI.git",
+    packages=pkgs,
+    install_requires=
+    [
+        'PyQt5',
+        'pillow',
+        'numpy',
+        'PyQtGraph',
+        'scipy',
+        'matplotlib',
+        'pandas',
+        # 'pyfftw'
+    ],
+    package_data={'hfoGUI': ['img/*.png']},
+    classifiers=[
+        "Programming Language :: Python :: 3.7 ",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3) ",
+        "Operating System :: OS Independent",
+    ],
+)

@@ -1,25 +1,35 @@
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 import exporters
 import os
+import time
+import sys
+
+project_name = 'hfoGUI'
 
 
 def background(self):  # defines the background for each window
     """providing the background info for each window"""
     # Acquiring information about geometry
-    self.PROJECT_DIR = os.path.dirname(os.path.abspath("__file__"))  # project directory
+    project_dir = os.path.dirname(os.path.abspath("__file__"))
+
+    if os.path.basename(project_dir) != project_name:
+        project_dir = os.path.dirname(sys.argv[0])
+
+    # defining the directory filepaths
+    self.PROJECT_DIR = project_dir  # project directory
+
     self.IMG_DIR = os.path.join(self.PROJECT_DIR, 'img')  # image directory
     self.CORE_DIR = os.path.join(self.PROJECT_DIR, 'core')  # core directory
     self.SETTINGS_DIR = os.path.join(self.PROJECT_DIR, 'settings')  # settings directory
     if not os.path.exists(self.SETTINGS_DIR):
         os.mkdir(self.SETTINGS_DIR)
 
-    self.setWindowIcon(QtGui.QIcon(os.path.join(self.IMG_DIR, 'cumc-crown.png')))  # declaring the icon image
-    self.deskW, self.deskH = QtGui.QDesktopWidget().availableGeometry().getRect()[2:] #gets the window resolution
-    # self.setWindowState(QtCore.Qt.WindowMaximized) # will maximize the GUI
+    self.setWindowIcon(QtGui.QIcon(os.path.join(self.IMG_DIR, 'GEBA_Logo.png')))  # declaring the icon image
+    self.deskW, self.deskH = QtWidgets.QDesktopWidget().availableGeometry().getRect()[2:]  #gets the window resolution
     self.setGeometry(0, 0, self.deskW/2, self.deskH/1.5)  # Sets the window size, 800x460 is the size of our window
 
-    QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
+    QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create('Cleanlooks'))
 
 
 class Worker(QtCore.QObject):
@@ -42,8 +52,8 @@ class Worker(QtCore.QObject):
 def center(self):
     """centers the window on the screen"""
     frameGm = self.frameGeometry()
-    screen = QtGui.QApplication.desktop().screenNumber(QtGui.QApplication.desktop().cursor().pos())
-    centerPoint = QtGui.QApplication.desktop().screenGeometry(screen).center()
+    screen = QtWidgets.QApplication.desktop().screenNumber(QtWidgets.QApplication.desktop().cursor().pos())
+    centerPoint = QtWidgets.QApplication.desktop().screenGeometry(screen).center()
     frameGm.moveCenter(centerPoint)
     self.move(frameGm.topLeft())
 
@@ -110,15 +120,15 @@ class CustomViewBox(pg.ViewBox):
         Create the menu
         """
         if self.menu is None:
-            self.menu = QtGui.QMenu()
-            self.save_plot = QtGui.QAction("Save Figure", self.menu)
+            self.menu = QtWidgets.QMenu()
+            self.save_plot = QtWidgets.QAction("Save Figure", self.menu)
             self.save_plot.triggered.connect(self.export)
             self.menu.addAction(self.save_plot)
         return self.menu
 
     def export(self):
         # choose filename to save as
-        save_filename = QtGui.QFileDialog.getSaveFileName(QtGui.QWidget(), 'Save Scores', '',
+        save_filename = QtWidgets.QFileDialog.getSaveFileName(QtWidgets.QWidget(), 'Save Scores', '',
                                                           'PNG (*.png);;JPG (*.jpg);;TIF (*.tif);;GIF (*.gif)')
 
         if save_filename == '':
@@ -164,3 +174,68 @@ class PltWidget(pg.PlotWidget):
         Constructor of the widget
         """
         super(PltWidget, self).__init__(parent, viewBox=CustomViewBox())
+
+
+@QtCore.pyqtSlot()
+def raise_w(new_window, old_window, source=''):
+    """ raise the current window"""
+    if 'ChooseFile' in str(new_window):
+
+        if 'lfp' in source.lower():
+            for key, val in old_window.main_window_field_positions.items():
+                if 'LFP Filename' in key:
+                    i, j = val
+                    break
+        elif 'eeg' in source.lower():
+            for key, val in old_window.main_window_field_positions.items():
+                if 'EEG Filename' in key:
+                    i, j = val
+                    break
+        elif 'set' in source.lower():
+            for key, val in old_window.main_window_field_positions.items():
+                if 'Set Filename' in key:
+                    i, j = val
+                    break
+
+        new_window.cur_file_e.setText(old_window.main_window_fields[i, j + 1].text())  # setting the current text field
+        new_window.raise_()
+        new_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        new_window.show()
+        time.sleep(0.1)
+
+    elif any(x in str(new_window) for x in ['Score',
+                                            'GraphSettings',
+                                            'TFPlot',
+                                            'PSDPlot']):
+        new_window.raise_()
+
+        new_window.show()
+        time.sleep(0.1)
+    elif "Choose" in str(old_window):
+        time.sleep(0.1)
+        old_window.hide()
+        return
+    else:
+        new_window.raise_()
+        new_window.show()
+        time.sleep(0.1)
+        old_window.hide()
+
+
+@QtCore.pyqtSlot()
+def raise_detection_window(new_window, old_window):
+    """ raise the current window"""
+    if any(analysis in str(new_window) for analysis in ['Hilbert', ]):
+        new_window.raise_()
+        new_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        new_window.show()
+        time.sleep(0.1)
+    else:
+        new_window.raise_()
+        new_window.show()
+        time.sleep(0.1)
+        old_window.hide()
+
+
+Large_Font = ("Arial", 11)  # defines two fonts for different purposes (might not be used
+Small_Font = ("Arial", 8)

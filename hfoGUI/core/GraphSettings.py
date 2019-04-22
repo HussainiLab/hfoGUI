@@ -5,18 +5,16 @@ import os, time, json, functools, datetime
 from scipy.signal import hilbert
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
-import numpy as np
 import core.filtering as filt
 import scipy
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtCore, QtWidgets
 from scipy import signal
 import numpy as np
 
 
 class update_plots_signal(QtCore.QObject):
     mysignal = QtCore.pyqtSignal(str, object, object, dict)
-
     # could have combined these two into a single signal... but who has time for that?
     mouse_signal = QtCore.pyqtSignal(str)
     lr_signal = QtCore.pyqtSignal(str)
@@ -28,7 +26,7 @@ class customProgress_signal(QtCore.QObject):
     close_signal = QtCore.pyqtSignal(str)
 
 
-class GraphSettingsWindows(QtGui.QWidget):
+class GraphSettingsWindows(QtWidgets.QWidget):
     """This is going to be the QWidget class that will be the popup window if the user
     decides they want to add a Graph, this will handle all graphing on the main QWidget as well"""
 
@@ -72,15 +70,15 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.FilterResponseCanvas = FigureCanvas(self.FilterResponse)
         self.FilterResponseAxis = self.FilterResponse.add_axes([0.1, 0.2, 0.85, 0.75], frameon=False)
 
-        FilterResponseLabel = QtGui.QLabel('Filter Response:')
-        FilterResponse = QtGui.QVBoxLayout()
+        FilterResponseLabel = QtWidgets.QLabel('Filter Response:')
+        FilterResponse = QtWidgets.QVBoxLayout()
 
         for filter_widget in [FilterResponseLabel, self.FilterResponseCanvas]:
             FilterResponse.addWidget(filter_widget)
 
         # --------- widgets ---------------------
 
-        self.graphs = QtGui.QTreeWidget()
+        self.graphs = QtWidgets.QTreeWidget()
         self.graphs.itemSelectionChanged.connect(self.sourceSelected)
 
         #  allowing the selection of multiple scores
@@ -94,7 +92,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         self.graph_header_option_positions = {}
 
         positions = [(i, j) for i in range(5) for j in range(6)]
-        self.graph_header_option_layout = QtGui.QGridLayout()
+        self.graph_header_option_layout = QtWidgets.QGridLayout()
 
         for (i, j), parameter in zip(positions, self.graph_header_options):
 
@@ -105,13 +103,13 @@ class GraphSettingsWindows(QtGui.QWidget):
 
                 if any((x in parameter for x in ['Filter Type:', 'Arena', 'Filter Method', 'Source', 'Notch', 'Mark',
                                                  'Load Data Profile'])):
-                    self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
-                    self.graph_header_option_fields[i, j + 1] = QtGui.QComboBox()
+                    self.graph_header_option_fields[i, j] = QtWidgets.QLabel(parameter)
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QComboBox()
                     self.graph_header_option_fields[i, j + 1].setEditable(True)
                     self.graph_header_option_fields[i, j + 1].lineEdit().setReadOnly(True)
                     self.graph_header_option_fields[i, j + 1].lineEdit().setAlignment(QtCore.Qt.AlignHCenter)
-                    self.graph_header_option_fields[i, j + 1].setSizePolicy(QtGui.QSizePolicy(
-                        QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed))
+                    self.graph_header_option_fields[i, j + 1].setSizePolicy(QtWidgets.QSizePolicy(
+                        QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
                     if 'Filter Type' in parameter:
                         options = ['None', 'Low Pass', 'High Pass', 'Bandpass']
 
@@ -153,66 +151,66 @@ class GraphSettingsWindows(QtGui.QWidget):
                         self.graph_header_option_fields[i, j + 1].currentIndexChanged.connect(
                             functools.partial(self.changeMethod, i, j))
 
-                    combobox_layout = QtGui.QHBoxLayout()
+                    combobox_layout = QtWidgets.QHBoxLayout()
                     combobox_layout.addWidget(self.graph_header_option_fields[i, j])
                     combobox_layout.addWidget(self.graph_header_option_fields[i, j + 1])
                     self.graph_header_option_layout.addLayout(combobox_layout, *(i, j))
 
                 elif 'Cutoff' in parameter:
-                    self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
+                    self.graph_header_option_fields[i, j] = QtWidgets.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-                    self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
                     self.graph_header_option_fields[i, j + 1].setDisabled(1)
                     self.graph_header_option_fields[i, j + 1].setText('N/A')
 
-                    cutoff_layout = QtGui.QHBoxLayout()
+                    cutoff_layout = QtWidgets.QHBoxLayout()
                     cutoff_layout.addWidget(self.graph_header_option_fields[i, j])
                     cutoff_layout.addWidget(self.graph_header_option_fields[i, j + 1])
                     self.graph_header_option_layout.addLayout(cutoff_layout, *(i, j))
 
                 elif 'Order' in parameter:
-                    self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
+                    self.graph_header_option_fields[i, j] = QtWidgets.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-                    self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setAlignment(
                         QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
 
                     self.graph_header_option_fields[i, j + 1].setText('3')
 
-                    Order_layout = QtGui.QHBoxLayout()
+                    Order_layout = QtWidgets.QHBoxLayout()
                     Order_layout.addWidget(self.graph_header_option_fields[i, j])
                     Order_layout.addWidget(self.graph_header_option_fields[i, j + 1])
                     self.graph_header_option_layout.addLayout(Order_layout, *(i, j))
 
                 elif 'Gain' in parameter:
 
-                    self.graph_header_option_fields[i, j] = QtGui.QLabel(parameter)
+                    self.graph_header_option_fields[i, j] = QtWidgets.QLabel(parameter)
                     self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-                    self.graph_header_option_fields[i, j + 1] = QtGui.QLineEdit()
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QLineEdit()
                     self.graph_header_option_fields[i, j + 1].setText('1')
                     self.graph_header_option_fields[i, j + 1].setAlignment(
                         QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
 
-                    gain_layout = QtGui.QHBoxLayout()
+                    gain_layout = QtWidgets.QHBoxLayout()
                     gain_layout.addWidget(self.graph_header_option_fields[i, j])
                     gain_layout.addWidget(self.graph_header_option_fields[i, j + 1])
                     self.graph_header_option_layout.addLayout(gain_layout, *(i, j))
 
                 elif 'Save' in parameter:
-                    self.save_profile_btn = QtGui.QPushButton('Save Profile')
+                    self.save_profile_btn = QtWidgets.QPushButton('Save Profile')
                     self.save_profile_btn.clicked.connect(self.saveProfile)
 
-                    self.load_profile_btn = QtGui.QPushButton('Load Profile')
+                    self.load_profile_btn = QtWidgets.QPushButton('Load Profile')
                     self.load_profile_btn.clicked.connect(self.changeProfile)
 
-                    self.delete_profile_btn = QtGui.QPushButton('Delete Profile')
+                    self.delete_profile_btn = QtWidgets.QPushButton('Delete Profile')
                     self.delete_profile_btn.clicked.connect(self.deleteProfile)
 
-                    button_layout = QtGui.QHBoxLayout()
+                    button_layout = QtWidgets.QHBoxLayout()
                     button_layout.addWidget(self.load_profile_btn)
                     button_layout.addWidget(self.save_profile_btn)
                     button_layout.addWidget(self.delete_profile_btn)
@@ -220,31 +218,31 @@ class GraphSettingsWindows(QtGui.QWidget):
                     self.graph_header_option_layout.addLayout(button_layout, i, j, i + 1, j + 1)
 
                 elif 'Hilbert' in parameter:
-                    self.graph_header_option_fields[i, j + 1] = QtGui.QCheckBox(parameter[:-1])
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QCheckBox(parameter[:-1])
                     self.graph_header_option_layout.addWidget(self.graph_header_option_fields[i, j + 1], *(i, j))
 
-        header_option_layout = QtGui.QHBoxLayout()
+        header_option_layout = QtWidgets.QHBoxLayout()
         option_index = 0
         for option in self.graph_header_options:
             if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                 continue
-            option_layout = QtGui.QHBoxLayout()
+            option_layout = QtWidgets.QHBoxLayout()
             self.option_field = option
             self.graphs.headerItem().setText(option_index, option)
             option_index += 1
 
         # ------------------------------button layout --------------------------------------
-        self.hide_btn = QtGui.QPushButton('Hide', self)
-        self.add_btn = QtGui.QPushButton('Add Graph Source', self)
+        self.hide_btn = QtWidgets.QPushButton('Hide', self)
+        self.add_btn = QtWidgets.QPushButton('Add Graph Source', self)
         self.add_btn.clicked.connect(functools.partial(self.validateSource, 'add'))
-        self.update_btn = QtGui.QPushButton('Update Selected Graph Source', self)
+        self.update_btn = QtWidgets.QPushButton('Update Selected Graph Source', self)
         self.update_btn.clicked.connect(functools.partial(self.validateSource, 'update'))
-        self.remove_btn = QtGui.QPushButton('Remove Selected Graph Source', self)
+        self.remove_btn = QtWidgets.QPushButton('Remove Selected Graph Source', self)
         self.remove_btn.clicked.connect(self.removeSource)
-        self.plot_resp = QtGui.QPushButton('Plot Filter Response', self)
+        self.plot_resp = QtWidgets.QPushButton('Plot Filter Response', self)
         self.plot_resp.clicked.connect(self.plot_response)
 
-        btn_layout = QtGui.QHBoxLayout()
+        btn_layout = QtWidgets.QHBoxLayout()
 
         for button in [self.add_btn, self.plot_resp, self.update_btn, self.remove_btn, self.hide_btn]:
             btn_layout.addWidget(button)
@@ -252,7 +250,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         layout_order = [self.graphs, FilterResponse, self.graph_header_option_layout, btn_layout]
 
-        layout_score = QtGui.QVBoxLayout()
+        layout_score = QtWidgets.QVBoxLayout()
 
         for order in layout_order:
             if 'Layout' in order.__str__():
@@ -305,7 +303,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         if 'start' in string:
             self.progress_value = 0
-            self.progdialog = QtGui.QProgressDialog(
+            self.progdialog = QtWidgets.QProgressDialog(
                 "Plotting Sources...", "Cancel", 0, 100, self)
             self.progdialog.setWindowTitle("Plotting")
             self.progdialog.setWindowModality(QtCore.Qt.WindowModal)
@@ -669,7 +667,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
     def addSource(self):
         option_index = 0
-        new_item = QtGui.QTreeWidgetItem()
+        new_item = QtWidgets.QTreeWidgetItem()
 
         # find source
         for option in self.graph_header_options:
@@ -739,7 +737,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         self.ActiveSourceSignal.myGUI_signal.emit('update')
 
-        self.mainWindow.plot_thread = QtCore.QThread()
         self.mainWindow.plot_thread.start()
         self.mainWindow.plot_thread_worker = Worker(self.Plot)
         self.mainWindow.plot_thread_worker.moveToThread(self.mainWindow.plot_thread)
@@ -811,7 +808,7 @@ class GraphSettingsWindows(QtGui.QWidget):
         session_path, set_filename = os.path.split(self.mainWindow.current_set_filename)
         session = os.path.splitext(set_filename)[0]
 
-        iterator = QtGui.QTreeWidgetItemIterator(self.graphs)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.graphs)
 
         # define the location in the QTreeWidget where our variables are located
         option_index = 0
@@ -915,7 +912,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                         while self.mainWindow.choice == '':
                             time.sleep(0.1)
 
-                        if self.mainWindow.choice == QtGui.QMessageBox.Abort:
+                        if self.mainWindow.choice == QtWidgets.QMessageBox.Abort:
                             return
                         else:  # Try to find the .set File
 
@@ -928,7 +925,7 @@ class GraphSettingsWindows(QtGui.QWidget):
                                 while self.mainWindow.choice == '':
                                     time.sleep(0.1)
 
-                                if self.mainWindow.choice == QtGui.QMessageBox.Ok:
+                                if self.mainWindow.choice == QtWidgets.QMessageBox.Ok:
                                     return
 
                             else:
@@ -1290,7 +1287,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         self.ActiveSourceSignal.myGUI_signal.emit('update')
 
-        self.mainWindow.plot_thread = QtCore.QThread()
         self.mainWindow.plot_thread.start()
         self.mainWindow.plot_thread_worker = Worker(self.Plot)
         self.mainWindow.plot_thread_worker.moveToThread(self.mainWindow.plot_thread)
@@ -1371,7 +1367,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         self.setDefaultOptions()
 
-        self.mainWindow.plot_thread = QtCore.QThread()
         self.mainWindow.plot_thread.start()
         self.mainWindow.plot_thread_worker = Worker(self.Plot)
         self.mainWindow.plot_thread_worker.moveToThread(self.mainWindow.plot_thread)
@@ -1401,7 +1396,7 @@ class GraphSettingsWindows(QtGui.QWidget):
 
         # If there are any sources, produce a file dialog
         sources = []
-        iterator = QtGui.QTreeWidgetItemIterator(self.graphs)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.graphs)
         while iterator.value():
             sources.append(iterator.value())
             iterator += 1
@@ -1468,7 +1463,7 @@ class GraphSettingsWindows(QtGui.QWidget):
             sources = profiles[new_profile]
             for source in sources:
                 option_index = 0
-                new_item = QtGui.QTreeWidgetItem()
+                new_item = QtWidgets.QTreeWidgetItem()
                 for option in self.graph_header_options:
                     if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                         continue
@@ -1484,7 +1479,6 @@ class GraphSettingsWindows(QtGui.QWidget):
 
             self.ActiveSourceSignal.myGUI_signal.emit('update')
 
-            self.mainWindow.plot_thread = QtCore.QThread()
             self.mainWindow.plot_thread.start()
             self.mainWindow.plot_thread_worker = Worker(self.Plot)
             self.mainWindow.plot_thread_worker.moveToThread(self.mainWindow.plot_thread)
@@ -1592,33 +1586,33 @@ class GraphSettingsWindows(QtGui.QWidget):
         return activeSources
 
 
-class ProfileNameDialog(QtGui.QDialog):
+class ProfileNameDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super(ProfileNameDialog, self).__init__(parent)
 
-        profileNameLabel = QtGui.QLabel("Profile Name:")
-        self.profileNameEdit = QtGui.QLineEdit()
+        profileNameLabel = QtWidgets.QLabel("Profile Name:")
+        self.profileNameEdit = QtWidgets.QLineEdit()
 
         self.setWindowTitle('Save Profile As:')
 
-        profileDialogText = QtGui.QLabel('In the text field, please name the profile/n' +
+        profileDialogText = QtWidgets.QLabel('In the text field, please name the profile/n' +
                                          'that you want to save, or press Cancel.')
 
-        buttonBox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok |
-                                           QtGui.QDialogButtonBox.Cancel)
+        buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok |
+                                           QtWidgets.QDialogButtonBox.Cancel)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-        widget_layout = QtGui.QHBoxLayout()
+        widget_layout = QtWidgets.QHBoxLayout()
         widget_layout.addWidget(profileNameLabel)
         widget_layout.addWidget(self.profileNameEdit)
 
-        btn_layout = QtGui.QHBoxLayout()
+        btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addWidget(buttonBox)
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(profileDialogText)
         layout.addLayout(widget_layout)
         layout.addLayout(btn_layout)
@@ -1632,7 +1626,7 @@ class ProfileNameDialog(QtGui.QDialog):
     def returnFilename(parent=None):
         dialog = ProfileNameDialog(parent)
         result = dialog.exec_()
-        if result == QtGui.QDialog.Accepted:
+        if result == QtWidgets.QDialog.Accepted:
             return dialog.getFilename()
         else:
             return None
@@ -1720,7 +1714,7 @@ class custom_vlines(pg.GraphicsObject):
             return (0, 0)
 
 
-class ProgressWindow(QtGui.QWidget):
+class ProgressWindow(QtWidgets.QWidget):
 
     def __init__(self):
         super(ProgressWindow, self).__init__()
