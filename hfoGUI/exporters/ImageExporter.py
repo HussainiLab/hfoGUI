@@ -61,8 +61,7 @@ class ImageExporter(Exporter):
             
         targetRect = QtCore.QRect(0, 0, self.params['width'], self.params['height'])
         sourceRect = self.getSourceRect()
-        
-        
+
         #self.png = QtGui.QImage(targetRect.size(), QtGui.QImage.Format_ARGB32)
         #self.png.fill(pyqtgraph.mkColor(self.params['background']))
         w, h = self.params['width'], self.params['height']
@@ -101,4 +100,4 @@ class ImageExporter(Exporter):
             self.png.save(fileName)
         
 ImageExporter.register()        
-        
+

@@ -128,7 +128,7 @@ class CustomViewBox(pg.ViewBox):
 
     def export(self):
         # choose filename to save as
-        save_filename = QtWidgets.QFileDialog.getSaveFileName(QtWidgets.QWidget(), 'Save Scores', '',
+        save_filename, filename_ext = QtWidgets.QFileDialog.getSaveFileName(QtWidgets.QWidget(), 'Save Scores', '',
                                                           'PNG (*.png);;JPG (*.jpg);;TIF (*.tif);;GIF (*.gif)')
 
         if save_filename == '':
