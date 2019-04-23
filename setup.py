@@ -10,7 +10,7 @@ pkg_name = "hfoGUI"
 
 setuptools.setup(
     name=pkg_name,
-    version="1.0.4",
+    version="1.0.5",
     author="Geoffrey Barrett",
     author_email="geoffrey.m.barrett@gmail.com",
     description="hfoGUI - a data visualization GUI for TINT data.",
