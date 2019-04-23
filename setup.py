@@ -27,7 +27,7 @@ setuptools.setup(
         'scipy',
         'matplotlib',
         'pandas',
-        # 'pyfftw'
+        'pyfftw'
     ],
     package_data={'hfoGUI': ['img/*.png']},
     classifiers=[
