@@ -114,7 +114,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         options = ['None', 'Low Pass', 'High Pass', 'Bandpass']
 
                     elif 'Filter Method' in parameter:
-                        options = ['butter', 'fftbandpass', 'cheby1', 'cheby2', 'ellip', 'bessel']
+                        options = ['butter',
+                                   # 'fftbandpass',
+                                   'cheby1', 'cheby2', 'ellip', 'bessel']
 
                     elif 'Source' in parameter:
                         options = ['Import .Set!']
@@ -126,13 +128,11 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         options = ['No', 'Yes']
 
                     elif 'Arena' in parameter:
-                        options = ['DarkRoom', 'BehaviorRoom', 'Room4', 'Circular Track',
-                                   'Simple Circular Track', 'Four Leaf Clover Track']
+                        options = ['DarkRoom', 'BehaviorRoom', 'Room4']
 
                     elif 'Load Data Profile' in parameter:
                         options = ['None']
                         self.current_profile = 'None'
-                        # self.graph_header_option_fields[i, j + 1].currentIndexChanged.connect(self.changeProfile)
                         try:
                             with open(self.profile_filename, 'r+') as f:
                                 profiles = json.load(f)
@@ -364,10 +364,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
             elif '.egf' in source:
                 Fs = 4.8e3
 
-        if order > 4.8e3:
-            # large Fs will cause problems with lower frequencies
-            pass
-
         self.FilterResponseAxis.clear()  # clearing the current plot
 
         if upper_cutoff is not None:
@@ -391,34 +387,24 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 elif upper_cutoff >= Fs/2:
                     b, a = filt.get_a_b('high', Fs, lower_cutoff, [], order=order, Rp=0.1, As=60, analog_val=False,
                                         filttype=filttype)
-                    '''b, a = filt.iirfilt('high', [], Fs=Fs, Wp=lower_cutoff, order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
 
                 elif lower_cutoff <= 0:
                     b, a = filt.get_a_b('low', Fs, upper_cutoff, [], order=order, Rp=0.1, As=60, analog_val=False,
                                         filttype=filttype)
-                    '''b, a = filt.iirfilt('low', [], Fs=Fs, Wp=upper_cutoff, Ws=[], order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
                 else:
 
                     b, a = filt.get_a_b('band', Fs, lower_cutoff, upper_cutoff, order=order, Rp=0.1, As=60,
                                         analog_val=False, filttype=filttype)
 
-                    '''b, a = filt.iirfilt('band', [], Fs=Fs, Wp=lower_cutoff, Ws=upper_cutoff, order=order,
-                                                analog_val=False, Rp=0.1, As=60, filttype=filttype)'''
             elif 'Low' in bandtype:
 
                 b, a = filt.get_a_b('low', Fs, upper_cutoff, [], order=order, Rp=0.1, As=60,
                                     analog_val=False, filttype=filttype)
 
-                '''b, a = filt.iirfilt('low', [], Fs=Fs, Wp=upper_cutoff, Ws=[], order=order, analog_val=False,
-                                            Rp=0.1, As=60, filttype=filttype)'''
                 lower_cutoff = None
             elif 'High' in bandtype:
                 b, a = filt.get_a_b('high', Fs, lower_cutoff, [], order=order, Rp=0.1, As=60,
                                     analog_val=False, filttype=filttype)
-                '''b, a = filt.iirfilt('high', [], Fs=Fs, Wp=lower_cutoff, Ws=[], order=order, analog_val=False,
-                                            Rp=0.1, As=60, filttype=filttype)'''
                 upper_cutoff = None
             else:
                 return
@@ -446,6 +432,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 self.FilterResponseAxis.axvline(lower_cutoff, color='green')
 
         else:
+            # I used to have this fftbandpass function. We will just skip that, takes too long. Keep this code
+            # in case I bring it back
+            '''
             # get the response of an arbitrary 10 seconds worth of data
             Fs1 = lower_cutoff - 1
             if Fs1 <= 0:
@@ -468,6 +457,8 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
             self.FilterResponseAxis.axvline(upper_cutoff, color='green')
             self.FilterResponseAxis.axvline(lower_cutoff, color='green')
+            '''
+            pass
 
         self.FilterResponseAxis.set_xscale('log')
         self.FilterResponseAxis.grid(which='both', axis='both')
@@ -492,7 +483,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
 
         elif source == 'MarkPeaks':
-            # vlines = custom_vlines(x, y[0], y[1], style=QtCore.Qt.DashLine, **kwargs)
             vlines = custom_vlines(x, y[0], y[1], **kwargs)
             self.mainWindow.Graph_axis.addItem(vlines)
 
@@ -690,8 +680,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                 # then the object is a combobox
                                 value = self.graph_header_option_fields[i, j + 1].currentText()
-
-                                # new_item.setText(option_index, value)
                             elif 'LineEdit' in str(self.graph_header_option_fields[i, j + 1]):
                                 # the object is a QTextEdit
                                 value = self.graph_header_option_fields[i, j + 1].text()
@@ -711,12 +699,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                 # then the object is a combobox
                                 value = self.graph_header_option_fields[i, j + 1].currentText()
-
-                                # new_item.setText(option_index, value)
                             elif 'LineEdit' in str(self.graph_header_option_fields[i, j + 1]):
                                 # the object is a QTextEdit
                                 value = self.graph_header_option_fields[i, j + 1].text()
-                                # new_item.setText(option_index, value)
                             elif 'CheckBox' in str(self.graph_header_option_fields[i, j + 1]):
                                 # the object is a checkbox
                                 checked = self.graph_header_option_fields[i, j + 1].isChecked()
@@ -776,6 +761,23 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         option_index += 1
 
     def Plot(self):
+
+        if self.graphs.topLevelItemCount() == 0:
+            if len(self.mark_source) > 0:
+                self.mainWindow.Graph_axis.clear()
+
+                self.newData.mouse_signal.emit('create')  # emits signal to create moving vertical line with the mouse
+
+                self.newData.lr_signal.emit(
+                    'create')  # this will create the linear region selector since we cleared it above
+                # self.mainWindow.create_lr()  # this will create the linear region selector since we cleared it above
+
+                self.mark_source = []
+                self.source_values = []
+                self.hilbert_sources = []
+                self.gain_sources = []
+            return
+
         self.mainWindow.get_parameters()
 
         self.progress_signal.start_signal.emit('start')
@@ -874,7 +876,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         hilbert_value = 'No'
                     elif hilbert is None:
                         hilbert_value = 'No'
-
                     if 'yes' in hilbert_value.lower():
                         hilbert_value = True
                     else:
@@ -973,6 +974,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         EEG = EEGRaw.copy()
 
                 else:
+                    pass
+
+                    '''
                     lower_cutoff = float(lower_cutoff)
                     upper_cutoff = float(upper_cutoff)
 
@@ -990,6 +994,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             upper_cutoff = Fs2 - 0.1
 
                     EEG = filt.fftbandpass(EEGRaw, Fs, Fs1, lower_cutoff, upper_cutoff, Fs2)
+                    '''
 
                 EEGRaw = None
 
@@ -1027,13 +1032,11 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
                     # box car smoothing, closest we could get to replicating Tint's speeds
                     B = np.ones((int(np.ceil(0.4 * Fs_pos)), 1)) / np.ceil(0.4 * Fs_pos)
-                    # posx = scipy.ndimage.correlate(posx, B, mode='nearest')
                     posx = scipy.ndimage.convolve(posx, B, mode='nearest')
-                    # posy = scipy.ndimage.correlate(posy, B, mode='nearest')
                     posy = scipy.ndimage.convolve(posy, B, mode='nearest')
 
                     speed = speed2D(posx, posy, post)
-                    self.loaded_sources[source_filename] = [speed, 50]  # the raw data
+                    self.loaded_sources[source_filename] = [speed, 50]  # the raw data, [position, pos Fs]
 
                     speed = None
                     posx = None
@@ -1061,12 +1064,10 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         # plot the spikes
 
         self.progress_signal.mysignal.emit('setText', {'text': 'Plotting Spikes (if checked).'})
-        # self.progdialog.setLabelText('Plotting Spikes (if checked).')
 
         if self.mainWindow.plot_spikes:
             # this will plot the spikes as a raster below the graph
             if len(self.mainWindow.active_tetrodes) > 0:
-                # if self.cell_spike_time_array == []:
                 if self.tetrode_spikes == {}:
 
                     # the spike colors below are in RGB format and were taken from an
@@ -1098,7 +1099,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         if not os.path.exists(cut_file):
                             pass
 
-                        units, available_units = find_unit([tetrode_file])
+                        units = find_unit([tetrode_file])
 
                         available_units = []
                         for list_ in units:
@@ -1116,14 +1117,10 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             if cell_num == 0:
                                 continue
 
-                            # self.cell_labels.append(cell_num)
                             cell_spike_times = 1000 * spike_times[np.where((units == cell_num))[1]]
-
 
                             cell_spike_times_array.append(cell_spike_times)
                             spike_color_list.append(self.spike_colors[cell_num-1])
-                            # self.cell_spike_time_array.append(cell_spike_times)
-                            # self.spike_color_list.append(self.spike_colors[cell_num-1])
 
                         self.tetrode_spikes[tetrode_number] = {'times': cell_spike_times_array,
                                                                'colors': spike_color_list}
@@ -1135,7 +1132,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         cell_spike_times_array = None
                         spike_color_list = None
 
-                # raster_spike_height = (0.30 / len(self.cell_spike_time_array)) * graph_y_range
                 raster_spike_height = (0.30 / 4) * graph_y_range
                 current_cell_raster_minimum = 0  # start at 0 amplitude
 
@@ -1145,8 +1141,8 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                     for i in range(len(spike_times)):
                         cell_spike_times = spike_times[i]
 
-                        # plots the vertical lines, the InfiniteLine does not plot an array like vlines, so we need to do
-                        # a for loop, this method could be significantly slower
+                        # plots the vertical lines, the InfiniteLine does not plot an array like vlines,
+                        # so we need to do a for loop, this method could be significantly slower
                         self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
                             [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
                                                    {'colors': spike_colors[i]})
@@ -1157,10 +1153,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         self.progress_value += 25
         self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
-        # self.progdialog.setValue(self.progress_value)
 
         self.progress_signal.mysignal.emit('setText', {'text': 'Plotting Sources.'})
-        # self.progdialog.setLabelText('Plotting Sources.')
+
         # plotting the data
         self.source_lengths = []
         for i, source in enumerate(self.source_values):
@@ -1177,9 +1172,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 analytic_signal = hilbert(data)
                 envelope = np.abs(analytic_signal)
                 envelope += shift_amount
-                # graph_axis.plot(data_times, envelope, 'r')
                 self.newData.mysignal.emit('Main', data_times, envelope, {'pen': (255, 0, 0)})
-                # graph_axis.plot(data_times, envelope, pen=(255, 0, 0))  # plots the hilbert transform in red
 
             data += shift_amount  # shifts the data so it is plotted above the previous one
             previous_source_max = np.nanmax(data)  # sets the new max value for the next plot
@@ -1187,19 +1180,16 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 if np.amax(envelope) > previous_source_max:
                     previous_source_max = np.amax(envelope)
 
-            # graph_axis.plot(data_times, data, 'b')  # plots the data
             self.mainWindow.graph_max = previous_source_max
             self.newData.mysignal.emit('Main', data_times, data.flatten(), {'pen': (0, 0, 255)})
-            # graph_axis.plot(data_times, data, pen=(0, 0, 255))  # plots the source data in blue
 
             self.progress_value += 25 / len(self.source_values)
             self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
-            # self.progdialog.setValue(self.progress_value)
 
         # self.mainWindow.graph_max = previous_source_max
 
         self.progress_signal.mysignal.emit('setText', {'text': 'Mark Peaks (if checked).'})
-        # self.progdialog.setLabelText('Mark Peaks (if checked).')
+
         # if the user chose to mark peaks, mark each of the peaks
         for i in range(len(self.source_values)):
             if self.mark_source[i]:
@@ -1215,21 +1205,17 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                                                                                 'style': QtCore.Qt.DashLine,
                                                                                'width': 1})
 
-                # self.newData.mysignal.emit('MarkPeaks', peak_times, previous_source_max, {})
             self.progress_value += 25 / len(self.source_values)
             self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
-            # self.progdialog.setValue(self.progress_value)
 
         try:
             self.mainWindow.SourceLength = np.amax(self.source_lengths)
             self.source_index = np.where(self.source_lengths == self.mainWindow.SourceLength)[0][0]
         except UnboundLocalError:
             self.plotting = False
-            # self.mainWindow.GraphCanvas.draw()
             return
         except ValueError:
             self.plotting = False
-            # self.mainWindow.GraphCanvas.draw()
             return
 
         Fs = self.source_values[self.source_index][1]
@@ -1247,10 +1233,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         self.progress_signal.mysignal.emit('setValue', {'value': 100})
 
-        # self.progdialog.setValue(100)
-
         self.progress_signal.close_signal.emit('emit')
-        # self.progdialog.close()
 
     def PlotSlice(self):
         pass
@@ -1321,12 +1304,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                                 if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                     # then the object is a combobox
                                     value = self.graph_header_option_fields[i, j + 1].currentText()
-
-                                    # new_item.setText(option_index, value)
                                 elif 'LineEdit' in str(self.graph_header_option_fields[i, j + 1]):
                                     # the object is a QTextEdit
                                     value = self.graph_header_option_fields[i, j + 1].text()
-                                    # new_item.setText(option_index, value)
                                 elif 'CheckBox' in str(self.graph_header_option_fields[i, j + 1]):
                                     # the object is a checkbox
                                     checked = self.graph_header_option_fields[i, j + 1].isChecked()
@@ -1342,12 +1322,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                                 if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                     # then the object is a combobox
                                     value = self.graph_header_option_fields[i, j + 1].currentText()
-
-                                    # new_item.setText(option_index, value)
                                 elif 'LineEdit' in str(self.graph_header_option_fields[i, j + 1]):
                                     # the object is a QTextEdit
                                     value = self.graph_header_option_fields[i, j + 1].text()
-                                    # new_item.setText(option_index, value)
                                 elif 'CheckBox' in str(self.graph_header_option_fields[i, j + 1]):
                                     # the object is a checkbox
                                     checked = self.graph_header_option_fields[i, j + 1].isChecked()
@@ -1373,7 +1350,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         self.mainWindow.plot_thread_worker.start.emit("start")
 
     def getSources(self):
-        # root = self.graphs.invisibleRootItem()
         sources = []
         for item_count in range(self.graphs.topLevelItemCount()):
             source_parameters = {}
@@ -1393,7 +1369,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         return sources
 
     def saveProfile(self):
-
         # If there are any sources, produce a file dialog
         sources = []
         iterator = QtWidgets.QTreeWidgetItemIterator(self.graphs)
@@ -1447,13 +1422,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
                 self.newData.mouse_signal.emit('create')
 
-                # self.mainWindow.vb = self.Graph_axis.vb
-
-                # self.mainWindow.create_lr()  # this will create the linear region selector since we cleared it above
                 self.newData.lr_signal.emit(
                     'create')  # this will create the linear region selector since we cleared it above
 
-                # self.mainWindow.GraphCanvas.draw()
                 self.current_profile = new_profile
                 return
 
@@ -1506,13 +1477,11 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
     def mousePress(self, event):
 
-        # event = event[0]  # the event input is tupe
         if event.button() == 1:
             mousePoint = self.mainWindow.vb.mapSceneToView(event.scenePos())
-            # self.keydowntime = datetime.datetime.now().timestamp()
+
             self.keydowntime = event.time()
             self.keydown_position = (mousePoint.x(), mousePoint.y())
-            # self.keydown_position = (event.x, event.y)
 
             delta_datetime = datetime.datetime.now().timestamp() - self.keydowntime
             if delta_datetime <= 0.2:
@@ -1520,14 +1489,12 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 if hasattr(self, 'lines'):
                     if self.selected_time is not None:
                         try:
-                            # self.lines.remove()
                             # remove old lines that were created
                             self.mainWindow.Graph_axis.removeItem(self.lines)
                             self.selected_time = None
                         except:
                             pass
 
-                            # self.mainWindow.Graph_axis.lines.pop(0)
                 if not hasattr(self.mainWindow, 'graph_max'):
                     return
 
@@ -1547,7 +1514,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 # add the line to the plot
                 self.mainWindow.Graph_axis.addItem(self.lines)
                 self.selected_time = mousePoint.x()
-                # self.mainWindow.GraphCanvas.draw()
                 self.RePlotTFSignal.myGUI_signal.emit('RePlot')
 
             else:
@@ -1555,7 +1521,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 if hasattr(self, 'lines'):
                     if self.selected_time is not None:
                         try:
-                            # self.lines.remove()
                             self.mainWindow.Graph_axis.removeItem(self.lines)
                             self.selected_time = None
                         except:
@@ -1718,5 +1683,4 @@ class ProgressWindow(QtWidgets.QWidget):
 
     def __init__(self):
         super(ProgressWindow, self).__init__()
-
 

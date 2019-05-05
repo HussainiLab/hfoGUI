@@ -1,4 +1,4 @@
-from pyqtgraph.Qt import QtGui, QtCore
+from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 from core.GUI_Utils import background, center, find_consec
 import os, time, json, functools
 from scipy.signal import hilbert
@@ -9,11 +9,11 @@ import pandas as pd
 import core.filtering as filt
 
 
-class TreeWidgetItem(QtGui.QTreeWidgetItem):
+class TreeWidgetItem(QtWidgets.QTreeWidgetItem):
     """This subclass was created so that the __lt__ method could be overwritten so that the numerical data values
     are treated correctly (not as strings)"""
     def __init__(self, parent=None):
-        QtGui.QTreeWidgetItem.__init__(self, parent)
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
     def __lt__(self, otherItem):
         column = self.treeWidget().sortColumn()
@@ -37,7 +37,7 @@ class custom_signal(QtCore.QObject):
     set_lr_signal = QtCore.pyqtSignal(str, str)
 
 
-class ScoreWindow(QtGui.QWidget):
+class ScoreWindow(QtWidgets.QWidget):
     '''This is the window that will pop up to score the '''
 
     def __init__(self, main, settings):
@@ -66,55 +66,54 @@ class ScoreWindow(QtGui.QWidget):
 
         self.setGeometry(main_location[2], main_location[1]+30, width, height)
 
-        tabs = QtGui.QTabWidget()
-        score_tab = QtGui.QWidget()
-        eoi_tab = QtGui.QWidget()
+        tabs = QtWidgets.QTabWidget()
+        score_tab = QtWidgets.QWidget()
+        eoi_tab = QtWidgets.QWidget()
 
         # ----------------------- score filename widget - score tab ----------------------------------------
 
-        self.save_score_btn = QtGui.QPushButton('Save Scores', self)
+        self.save_score_btn = QtWidgets.QPushButton('Save Scores', self)
         self.save_score_btn.clicked.connect(self.saveScores)
 
-        self.load_score_btn = QtGui.QPushButton('Load Scores', self)
+        self.load_score_btn = QtWidgets.QPushButton('Load Scores', self)
         self.load_score_btn.clicked.connect(self.loadScores)
 
-        score_filename_btn_layout = QtGui.QHBoxLayout()
+        score_filename_btn_layout = QtWidgets.QHBoxLayout()
         score_filename_btn_layout.addWidget(self.load_score_btn)
         score_filename_btn_layout.addWidget(self.save_score_btn)
 
-        score_filename_label = QtGui.QLabel('Score Filename:')
-        self.score_filename = QtGui.QLineEdit()
+        score_filename_label = QtWidgets.QLabel('Score Filename:')
+        self.score_filename = QtWidgets.QLineEdit()
         self.score_filename.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         self.score_filename.setText("Please add a source!")
 
-        score_filename_layout = QtGui.QHBoxLayout()
+        score_filename_layout = QtWidgets.QHBoxLayout()
         score_filename_layout.addWidget(score_filename_label)
         score_filename_layout.addWidget(self.score_filename)
 
+        scorer_filename_label = QtWidgets.QLabel('Scorer:')
+        self.scorer = QtWidgets.QLineEdit()
 
-        scorer_filename_label = QtGui.QLabel('Scorer:')
-        self.scorer = QtGui.QLineEdit()
-
-        scorer_layout = QtGui.QHBoxLayout()
+        scorer_layout = QtWidgets.QHBoxLayout()
         scorer_layout.addWidget(scorer_filename_label)
         scorer_layout.addWidget(self.scorer)
 
-        source_label = QtGui.QLabel("Source:")
-        self.source = QtGui.QComboBox()
+        source_label = QtWidgets.QLabel("Source:")
+        self.source = QtWidgets.QComboBox()
         self.source.setEditable(True)
         self.source.lineEdit().setReadOnly(True)
         self.source.lineEdit().setAlignment(QtCore.Qt.AlignHCenter)
         self.source.currentIndexChanged.connect(self.changeSources)
-        self.source.setSizePolicy(QtGui.QSizePolicy(
-            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed))
+        self.source.setSizePolicy(QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
         self.source.addItem("None")
-        source_layout = QtGui.QHBoxLayout()
+        source_layout = QtWidgets.QHBoxLayout()
         source_layout.addWidget(source_label)
         source_layout.addWidget(self.source)
 
         # -------------------------- scores widget --------------------------------------
 
-        self.scores = QtGui.QTreeWidget()
+        self.scores = QtWidgets.QTreeWidget()
         self.scores.setSortingEnabled(True)
         self.scores.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.scores.customContextMenuRequested.connect(functools.partial(self.openMenu, 'score'))
@@ -131,12 +130,12 @@ class ScoreWindow(QtGui.QWidget):
 
         # ----------------------- scoring widgets -------------------------
 
-        self.score = QtGui.QComboBox()
+        self.score = QtWidgets.QComboBox()
         self.score.setEditable(True)
         self.score.lineEdit().setReadOnly(True)
         self.score.lineEdit().setAlignment(QtCore.Qt.AlignHCenter)
-        self.score.setSizePolicy(QtGui.QSizePolicy(
-                        QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed))
+        self.score.setSizePolicy(QtWidgets.QSizePolicy(
+                        QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
 
         score_values = ['None', 'Spike', 'Theta', 'Gamma Low', 'Gamma High', 'Ripple', 'Fast Ripple', 'Sharp Wave Ripple',
                         'Artifact',
@@ -147,22 +146,22 @@ class ScoreWindow(QtGui.QWidget):
         for score in score_values:
             self.score.addItem(score)
 
-        score_label = QtGui.QLabel("Score:")
+        score_label = QtWidgets.QLabel("Score:")
 
-        score_layout = QtGui.QHBoxLayout()
+        score_layout = QtWidgets.QHBoxLayout()
         score_layout.addWidget(score_label)
         score_layout.addWidget(self.score)
 
         # ------------------------------button layout --------------------------------------
-        self.hide_btn = QtGui.QPushButton('Hide', self)
-        self.add_btn = QtGui.QPushButton('Add Score', self)
+        self.hide_btn = QtWidgets.QPushButton('Hide', self)
+        self.add_btn = QtWidgets.QPushButton('Add Score', self)
         self.add_btn.clicked.connect(self.addScore)
-        self.update_btn = QtGui.QPushButton('Update Selected Scores')
+        self.update_btn = QtWidgets.QPushButton('Update Selected Scores')
         self.update_btn.clicked.connect(self.updateScores)
-        self.delete_btn = QtGui.QPushButton('Delete Selected Scores', self)
+        self.delete_btn = QtWidgets.QPushButton('Delete Selected Scores', self)
         self.delete_btn.clicked.connect(self.deleteScores)
 
-        btn_layout = QtGui.QHBoxLayout()
+        btn_layout = QtWidgets.QHBoxLayout()
 
         for button in [self.add_btn, self.update_btn, self.delete_btn, self.hide_btn]:
             btn_layout.addWidget(button)
@@ -171,7 +170,7 @@ class ScoreWindow(QtGui.QWidget):
         layout_order = [score_filename_btn_layout, score_filename_layout,  scorer_layout, self.scores, score_layout,
                         btn_layout]
 
-        layout_score = QtGui.QVBoxLayout()
+        layout_score = QtWidgets.QVBoxLayout()
         for order in layout_order:
             if 'Layout' in order.__str__():
                 layout_score.addLayout(order)
@@ -180,50 +179,50 @@ class ScoreWindow(QtGui.QWidget):
 
         # ------- EOI widgets -----------
 
-        eoi_filename_label = QtGui.QLabel('EOI Filename:')
-        self.eoi_filename = QtGui.QLineEdit()
+        eoi_filename_label = QtWidgets.QLabel('EOI Filename:')
+        self.eoi_filename = QtWidgets.QLineEdit()
         self.eoi_filename.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         self.eoi_filename.setText("Please add a source!")
 
-        eoi_filename_layout = QtGui.QHBoxLayout()
+        eoi_filename_layout = QtWidgets.QHBoxLayout()
         eoi_filename_layout.addWidget(eoi_filename_label)
         eoi_filename_layout.addWidget(self.eoi_filename)
 
-        self.save_eoi_btn = QtGui.QPushButton("Save EOI's")
+        self.save_eoi_btn = QtWidgets.QPushButton("Save EOI's")
         self.save_eoi_btn.clicked.connect(self.saveAutomaticEOIs)
-        eoi_button_layout = QtGui.QHBoxLayout()
+        eoi_button_layout = QtWidgets.QHBoxLayout()
 
-        self.load_eois = QtGui.QPushButton("Load EOI's")
+        self.load_eois = QtWidgets.QPushButton("Load EOI's")
         self.load_eois.clicked.connect(self.loadAutomaticEOIs)
 
         eoi_button_layout.addWidget(self.load_eois)
         eoi_button_layout.addWidget(self.save_eoi_btn)
 
-        self.EOI_score = QtGui.QComboBox()
+        self.EOI_score = QtWidgets.QComboBox()
         self.EOI_score.setEditable(True)
         self.EOI_score.lineEdit().setReadOnly(True)
         self.EOI_score.lineEdit().setAlignment(QtCore.Qt.AlignHCenter)
-        self.EOI_score.setSizePolicy(QtGui.QSizePolicy(
-            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed))
+        self.EOI_score.setSizePolicy(QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed))
 
         for score in score_values:
             self.EOI_score.addItem(score)
 
-        EOI_score_label = QtGui.QLabel("Score:")
+        EOI_score_label = QtWidgets.QLabel("Score:")
 
-        EOI_score_layout = QtGui.QHBoxLayout()
+        EOI_score_layout = QtWidgets.QHBoxLayout()
         EOI_score_layout.addWidget(EOI_score_label)
         EOI_score_layout.addWidget(self.EOI_score)
 
-        eoi_method_label = QtGui.QLabel("EOI Detection Method:")
-        self.eoi_method = QtGui.QComboBox()
+        eoi_method_label = QtWidgets.QLabel("EOI Detection Method:")
+        self.eoi_method = QtWidgets.QComboBox()
         self.eoi_method.currentIndexChanged.connect(self.setEOIfilename)
         methods = ['Hilbert']
 
-        events_detected_label = QtGui.QLabel('Events Detected:')
-        self.events_detected = QtGui.QLineEdit()
+        events_detected_label = QtWidgets.QLabel('Events Detected:')
+        self.events_detected = QtWidgets.QLineEdit()
 
-        events_detected_layout = QtGui.QHBoxLayout()
+        events_detected_layout = QtWidgets.QHBoxLayout()
         events_detected_layout.addWidget(events_detected_label)
         events_detected_layout.addWidget(self.events_detected)
         self.events_detected.setText('0')
@@ -232,15 +231,15 @@ class ScoreWindow(QtGui.QWidget):
         for method in methods:
             self.eoi_method.addItem(method)
 
-        eoi_method_layout = QtGui.QHBoxLayout()
+        eoi_method_layout = QtWidgets.QHBoxLayout()
         eoi_method_layout.addWidget(eoi_method_label)
         eoi_method_layout.addWidget(self.eoi_method)
 
-        eoi_parameter_layout = QtGui.QHBoxLayout()
+        eoi_parameter_layout = QtWidgets.QHBoxLayout()
         eoi_parameter_layout.addLayout(eoi_method_layout)
         eoi_parameter_layout.addLayout(events_detected_layout)
 
-        self.EOI = QtGui.QTreeWidget()
+        self.EOI = QtWidgets.QTreeWidget()
         self.EOI.setSortingEnabled(True)
         self.EOI.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.EOI.customContextMenuRequested.connect(functools.partial(self.openMenu, 'EOI'))
@@ -254,24 +253,24 @@ class ScoreWindow(QtGui.QWidget):
         self.EOI.itemSelectionChanged.connect(functools.partial(self.changeEventText, 'EOI'))
 
         # ----- EOI tab buttons ---------------
-        self.update_eoi_region = QtGui.QPushButton("Update EOI Region")
+        self.update_eoi_region = QtWidgets.QPushButton("Update EOI Region")
         self.update_eoi_region.setToolTip("This will modify the times based on the current selected window")
         self.update_eoi_region.clicked.connect(self.updateEOIRegion)
 
-        self.eoi_hide = QtGui.QPushButton("Hide")
-        self.find_eoi_btn = QtGui.QPushButton("Find EOI's")
+        self.eoi_hide = QtWidgets.QPushButton("Hide")
+        self.find_eoi_btn = QtWidgets.QPushButton("Find EOI's")
         self.find_eoi_btn.clicked.connect(self.findEOIs)
-        self.delete_eoi_btn = QtGui.QPushButton("Remove Selected EOI")
+        self.delete_eoi_btn = QtWidgets.QPushButton("Remove Selected EOI")
         self.delete_eoi_btn.clicked.connect(self.deleteEOI)
 
-        self.add_eoi_btn = QtGui.QPushButton("Add Selected EOI to Score")
+        self.add_eoi_btn = QtWidgets.QPushButton("Add Selected EOI to Score")
         self.add_eoi_btn.clicked.connect(self.addEOI)
 
-        btn_layout = QtGui.QHBoxLayout()
+        btn_layout = QtWidgets.QHBoxLayout()
         for btn in [self.find_eoi_btn, self.add_eoi_btn, self.update_eoi_region, self.delete_eoi_btn, self.eoi_hide]:
             btn_layout.addWidget(btn)
 
-        layout_eoi = QtGui.QVBoxLayout()
+        layout_eoi = QtWidgets.QVBoxLayout()
 
         for item in [eoi_button_layout, eoi_filename_layout, eoi_parameter_layout, self.EOI, EOI_score_layout, btn_layout]:
             if 'Layout' in item.__str__():
@@ -286,13 +285,12 @@ class ScoreWindow(QtGui.QWidget):
         tabs.addTab(score_tab, 'Score')
         tabs.addTab(eoi_tab, 'Automatic Detection')
 
-        window_layout = QtGui.QVBoxLayout()
+        window_layout = QtWidgets.QVBoxLayout()
         for item in [source_layout, tabs]:
             if 'Layout' in item.__str__():
                 window_layout.addLayout(item)
             else:
                 window_layout.addWidget(item)
-                # layout_score.addStretch(1)
 
         self.hilbert_thread = QtCore.QThread()
         self.setLayout(window_layout)
@@ -330,13 +328,13 @@ class ScoreWindow(QtGui.QWidget):
         settings_filename = index[val].data()
         if settings_filename != '' or settings_filename != 'N/A':
             # pyperclip.copy(settings_filename)
-            cb = QtGui.QApplication.clipboard()
+            cb = QtWidgets.QApplication.clipboard()
             cb.clear(mode=cb.Clipboard)
             cb.setText(settings_filename, mode=cb.Clipboard)
 
     def openMenu(self, source, position):
 
-        menu = QtGui.QMenu()
+        menu = QtWidgets.QMenu()
 
         if 'score' in source:
             indexes = self.scores.selectedIndexes()
@@ -365,7 +363,7 @@ class ScoreWindow(QtGui.QWidget):
                 time.sleep(0.1)
             return
 
-        # new_item = QtGui.QTreeWidgetItem()
+        # new_item = QtWidgets.QTreeWidgetItem()
         new_item = TreeWidgetItem()
         id = self.createID('Manual')
         self.IDs.append(id)
@@ -416,7 +414,7 @@ class ScoreWindow(QtGui.QWidget):
         '''
         # this method involves iterating which will be more time consuming, instead I'll keep a list of the values
         # root = self.scores.invisibleRootItem()
-        iterator = QtGui.QTreeWidgetItemIterator(self.scores)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.scores)
 
         
 
@@ -495,7 +493,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename, save_fileextension = QtGui.QFileDialog.getOpenFileName(self, 'Load Scores',
+        save_filename, save_fileextension = QtWidgets.QFileDialog.getOpenFileName(self, 'Load Scores',
                                                           save_filename,
                                                           'Text Files (*.txt)')
         if save_filename == '':
@@ -519,7 +517,7 @@ class ScoreWindow(QtGui.QWidget):
         N = len(df)
 
         # find the IDs of any existing EOIs
-        iterator = QtGui.QTreeWidgetItemIterator(self.scores)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.scores)
 
         score_IDs = []
         while iterator.value():
@@ -551,7 +549,7 @@ class ScoreWindow(QtGui.QWidget):
                 score_value = value
 
         for score_index in range(N):
-            # item = QtGui.QTreeWidgetItem()
+            # item = QtWidgets.QTreeWidgetItem()
             item = TreeWidgetItem()
 
             if not ids_exist:
@@ -607,7 +605,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename, save_file_extension = QtGui.QFileDialog.getSaveFileName(self, 'Save Scores',
+        save_filename, save_file_extension = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Scores',
                                                           save_filename,
                                                           'Text Files (*.txt)')
 
@@ -716,7 +714,7 @@ class ScoreWindow(QtGui.QWidget):
     def findEOIs(self):
 
         # find the IDs of any existing EOIs
-        iterator = QtGui.QTreeWidgetItemIterator(self.EOI)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.EOI)
 
         auto_IDs = []
         while iterator.value():
@@ -728,9 +726,6 @@ class ScoreWindow(QtGui.QWidget):
         [self.IDs.pop(self.IDs.index(ID)) for ID in auto_IDs]  # remove the id from the list of IDs
 
         if 'Hilbert' in self.eoi_method.currentText():
-            # EOIs = HilbertDetection(self)
-            # dialog_self = QtGui.QWidget()
-            # dialog = HilbertParametersWindow.HilbertDialog(dialog_self, self.mainWindow, self)
             # make sure to have the windows have a self. in front of them otherwise they will run and close
             self.hilbert_window = HilbertParametersWindow(self.mainWindow, self)
 
@@ -804,7 +799,7 @@ class ScoreWindow(QtGui.QWidget):
         # root = self.scores.invisibleRootItem()
         for item in self.EOI.selectedItems():
 
-            # new_item = QtGui.QTreeWidgetItem()
+            # new_item = QtWidgets.QTreeWidgetItem()
             new_item = TreeWidgetItem()
 
             for score_key, score_value in self.score_headers.items():
@@ -848,7 +843,13 @@ class ScoreWindow(QtGui.QWidget):
         (item.parent() or root).removeChild(item)
 
         # select the next item
-        selected_item = self.EOI.topLevelItem(item_count).setSelected(True)
+
+        if self.EOI.topLevelItem(item_count) is not None:
+            selected_item = self.EOI.topLevelItem(item_count).setSelected(True)
+
+        else:
+            self.events_detected.setText(str(self.EOI.topLevelItemCount()))
+            return
 
         # update the events detected
         new_detected_events = str(int(self.events_detected.text()) - 1)
@@ -876,7 +877,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename, save_string_ext = QtGui.QFileDialog.getOpenFileName(self, 'Load EOI\'s',
+        save_filename, save_string_ext = QtWidgets.QFileDialog.getOpenFileName(self, 'Load EOI\'s',
                                                  save_filename,
                                                  'Text Files (*.txt)')
         if save_filename == '':
@@ -898,7 +899,7 @@ class ScoreWindow(QtGui.QWidget):
         N = len(df)
 
         # find the IDs of any existing EOIs
-        iterator = QtGui.QTreeWidgetItemIterator(self.EOI)
+        iterator = QtWidgets.QTreeWidgetItemIterator(self.EOI)
 
         auto_IDs = []
         while iterator.value():
@@ -922,7 +923,7 @@ class ScoreWindow(QtGui.QWidget):
                 start_value = value
 
         for eoi_index in range(N):
-            # item = QtGui.QTreeWidgetItem()
+            # item = QtWidgets.QTreeWidgetItem()
             item = TreeWidgetItem()
 
             if not ids_exist:
@@ -988,7 +989,7 @@ class ScoreWindow(QtGui.QWidget):
         if 'Please add a source!' in save_filename:
             return
 
-        save_filename, save_extension = QtGui.QFileDialog.getSaveFileName(self, 'Save EOI\'s',
+        save_filename, save_extension = QtWidgets.QFileDialog.getSaveFileName(self, 'Save EOI\'s',
                                                  save_filename,
                                                  'Text Files (*.txt)')
 
@@ -1344,7 +1345,7 @@ def HilbertDetection(self):
             settings_value = value
 
     for EOI in EOIs:
-        # EOI_item = QtGui.QTreeWidgetItem()
+        # EOI_item = QtWidgets.QTreeWidgetItem()
         EOI_item = TreeWidgetItem()
 
         new_id = self.createID(self.eoi_method.currentText())
@@ -1450,7 +1451,7 @@ def findStart(start_indices):
     return start_index
 
 
-class HilbertParametersWindow(QtGui.QWidget):
+class HilbertParametersWindow(QtWidgets.QWidget):
 
     def __init__(self, main, score):
         super(HilbertParametersWindow, self).__init__()
@@ -1466,8 +1467,7 @@ class HilbertParametersWindow(QtGui.QWidget):
         self.setWindowTitle(
             os.path.splitext(os.path.basename(__file__))[0] + " - Hilbert Parameters Window")  # sets the title of the window
 
-        main_location = main.frameGeometry().getCoords()
-
+        # main_location = main.frameGeometry().getCoords()
         # self.setGeometry(main_location[2], main_location[1] + 30, width, height)
 
         self.HilbertParameters = ['Epoch(s):', '', 'Threshold(SD):',  '', 'Minimum Time(ms):', '',
@@ -1478,7 +1478,7 @@ class HilbertParametersWindow(QtGui.QWidget):
         self.Hilbert_field_positions = {}
 
         positions = [(i, j) for i in range(3) for j in range(6)]
-        hilbert_parameter_layout = QtGui.QGridLayout()
+        hilbert_parameter_layout = QtWidgets.QGridLayout()
 
         for (i, j), parameter in zip(positions, self.HilbertParameters):
 
@@ -1487,10 +1487,10 @@ class HilbertParametersWindow(QtGui.QWidget):
             else:
                 self.Hilbert_field_positions[parameter] = (i, j)
 
-                self.hilbert_fields[i, j] = QtGui.QLabel(parameter)
+                self.hilbert_fields[i, j] = QtWidgets.QLabel(parameter)
                 self.hilbert_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-                self.hilbert_fields[i, j + 1] = QtGui.QLineEdit()
+                self.hilbert_fields[i, j + 1] = QtWidgets.QLineEdit()
                 self.hilbert_fields[i, j + 1].setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
 
                 if 'Epoch' in parameter:
@@ -1529,26 +1529,26 @@ class HilbertParametersWindow(QtGui.QWidget):
 
                 self.hilbert_fields[i, j + 1].setText(ParameterText)
 
-                parameter_layout = QtGui.QHBoxLayout()
+                parameter_layout = QtWidgets.QHBoxLayout()
                 parameter_layout.addWidget(self.hilbert_fields[i, j])
                 parameter_layout.addWidget(self.hilbert_fields[i, j + 1])
                 hilbert_parameter_layout.addLayout(parameter_layout, *(i, j))
 
-        window_layout = QtGui.QVBoxLayout()
+        window_layout = QtWidgets.QVBoxLayout()
 
-        Title = QtGui.QLabel("Automatic Detection - Hilbert")
+        Title = QtWidgets.QLabel("Automatic Detection - Hilbert")
 
-        directions = QtGui.QLabel("Please ensure that the parameters listed below are correct. " +
+        directions = QtWidgets.QLabel("Please ensure that the parameters listed below are correct. " +
                                   "if you are interested in Fast Ripples, I recommend bumping the " +
                                   "minimum frequency to 500Hz.")
 
-        self.analyze_btn = QtGui.QPushButton("Analyze")
+        self.analyze_btn = QtWidgets.QPushButton("Analyze")
         self.analyze_btn.clicked.connect(self.analyze)
 
-        self.cancel_btn = QtGui.QPushButton("Cancel")
+        self.cancel_btn = QtWidgets.QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.close_app)
 
-        button_layout = QtGui.QHBoxLayout()
+        button_layout = QtWidgets.QHBoxLayout()
 
         for button in [self.analyze_btn, self.cancel_btn]:
             button_layout.addWidget(button)
@@ -1685,15 +1685,11 @@ class HilbertParametersWindow(QtGui.QWidget):
             with open(self.scoreWindow.settings_fname, 'w') as f:
                 json.dump(settings, f)
 
-
         self.scoreWindow.hilbert_thread.start()
         self.scoreWindow.hilbert_thread_worker = Worker(HilbertDetection, self.scoreWindow)
         self.scoreWindow.hilbert_thread_worker.moveToThread(self.scoreWindow.hilbert_thread)
         self.scoreWindow.hilbert_thread_worker.start.emit("start")
 
-        # HilbertDetection(self.scoreWindow)
-
-        # self.hide()
         self.close()
 
     def close_app(self):
@@ -1701,7 +1697,7 @@ class HilbertParametersWindow(QtGui.QWidget):
         self.close()
 
 
-class SettingsViewer(QtGui.QWidget):
+class SettingsViewer(QtWidgets.QWidget):
 
     def __init__(self, filename):
         super(SettingsViewer, self).__init__()
@@ -1712,22 +1708,22 @@ class SettingsViewer(QtGui.QWidget):
 
         self.setWindowTitle("Settings Viewer Window")
 
-        setting_fname_label = QtGui.QLabel("Settings Filename:")
-        self.setting_filename = QtGui.QLineEdit()
+        setting_fname_label = QtWidgets.QLabel("Settings Filename:")
+        self.setting_filename = QtWidgets.QLineEdit()
         self.setting_filename.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         self.setting_filename.setText(filename)
 
-        settings_fname_layout = QtGui.QHBoxLayout()
+        settings_fname_layout = QtWidgets.QHBoxLayout()
         settings_fname_layout.addWidget(setting_fname_label)
         settings_fname_layout.addWidget(self.setting_filename)
 
         with open(filename, 'r+') as f:
             settings = json.load(f)
 
-        parameter_label = QtGui.QLabel("Settings Parameters")
-        # self.parameters = QtGui.QTextEdit()
+        parameter_label = QtWidgets.QLabel("Settings Parameters")
+        # self.parameters = QtWidgets.QTextEdit()
 
-        self.parameters = QtGui.QTreeWidget()
+        self.parameters = QtWidgets.QTreeWidget()
 
         self.parameters_headers = {'Parameter:': 0, "Value:": 1}
         for key, value in self.parameters_headers.items():
@@ -1736,21 +1732,21 @@ class SettingsViewer(QtGui.QWidget):
         for key, value in settings.items():
             # text = '%s\t%s' % (str(key), str(value))
             # self.parameters.append(text)
-            # new_item = QtGui.QTreeWidgetItem()
+            # new_item = QtWidgets.QTreeWidgetItem()
             new_item = TreeWidgetItem()
 
             new_item.setText(self.parameters_headers['Parameter:'], str(key))
             new_item.setText(self.parameters_headers['Value:'], str(value))
             self.parameters.addTopLevelItem(new_item)
 
-        parameters_layout = QtGui.QVBoxLayout()
+        parameters_layout = QtWidgets.QVBoxLayout()
         parameters_layout.addWidget(parameter_label)
         parameters_layout.addWidget(self.parameters)
 
-        self.close_btn = QtGui.QPushButton("Close")
+        self.close_btn = QtWidgets.QPushButton("Close")
         self.close_btn.clicked.connect(self.close_app)
 
-        settings_layout = QtGui.QVBoxLayout()
+        settings_layout = QtWidgets.QVBoxLayout()
 
         for order in [settings_fname_layout, parameters_layout, self.close_btn]:
             if 'Layout' in order.__str__():

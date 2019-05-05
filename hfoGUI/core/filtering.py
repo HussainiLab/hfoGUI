@@ -294,7 +294,7 @@ def custom_cheby1(data, Fs, N, Rp, Wp, Ws=None, filtresponse='bandpass', analog_
     return filtered_data
 
 
-def dcblock(data, fc, fs=None, analog_val=False, showresponse=0):
+def dcblock(data, fc, fs=None, analog_val=False, showresponse=0, self=None):
 
     """This method will return the filter coefficients for a DC Blocker Filter"""
 
@@ -365,8 +365,10 @@ def PlotResponse(a, b, fc, fs, analog_val):
 
 
 def fft_plot(Fs, Y):
-    '''Takes the Sample Frequency: Fs(Hz), the numer of samples, N, and the data values (Y),
-    and performs a Fast Fourier Transformation to observe the signal in the frequency domain'''
+    '''
+    Takes the Sample Frequency: Fs(Hz), the numer of samples, N, and the data values (Y),
+    and performs a Fast Fourier Transformation to observe the signal in the frequency domain
+    '''
 
     N = len(Y)
     k = np.arange(N)
