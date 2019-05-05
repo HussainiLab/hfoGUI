@@ -1,0 +1,16 @@
+cycler==0.10.0
+hfoGUI==1.0.6
+kiwisolver==1.0.1
+matplotlib==3.0.3
+numpy==1.16.3
+pandas==0.24.2
+Pillow==6.0.0
+pyFFTW==0.11.1
+pyparsing==2.4.0
+PyQt5==5.12.1
+PyQt5-sip==4.19.15
+pyqtgraph==0.10.0
+python-dateutil==2.8.0
+pytz==2019.1
+scipy==1.2.1
+six==1.12.0
