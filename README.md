@@ -24,4 +24,4 @@ Since it utilizes PyQt5 as the GUI framework it should be available to a wide va
 
 # License
 
-This project is licensed under the GNU  General  Public  License - see the [LICENSE.md](../blob/master/LICENSE) file for details
+This project is licensed under the GNU  General  Public  License - see the [LICENSE.md](../master/LICENSE) file for details
