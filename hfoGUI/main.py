@@ -11,6 +11,8 @@ from core.Score import ScoreWindow
 from core.TFplots import TFPlotWindow
 from core.ChooseFile import ChooseFile, new_File
 
+version = "1.0.8"
+
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
 
@@ -18,7 +20,6 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
     def __init__(self):  # initializes the main window
         super(Window, self).__init__()
-        # self.setGeometry(50, 50, 500, 300)
         background(self)  # acquires some features from the background function we defined earlier
 
         pg.setConfigOption('background', 'w')
@@ -74,18 +75,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         # Version information -------------------------------------------
         if getattr(sys, 'frozen', False):
-
-            mod_date = time.ctime(os.path.getmtime(sys.executable))  # finds the modification date of the program
-
-            vers_label = QtWidgets.QLabel(
-                os.path.splitext(os.path.basename(sys.executable))[0] + " V1.1 - Last Updated: " + mod_date)
-
+            version_label = QtWidgets.QLabel(f"hfoGUI - {version}")
         else:
-
-            mod_date = time.ctime(os.path.getmtime(__file__))  # finds the modification date of the program
-
-            vers_label = QtWidgets.QLabel(
-                os.path.splitext(os.path.basename(__file__))[0] + " V1.1 - Last Updated: " + mod_date)
+            version_label = QtWidgets.QLabel(f"hfoGUI - {version}")
 
         # ------------- grid layout ------------------------
 
@@ -205,7 +197,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 layout.addStretch(1)
 
         layout.addStretch(1)  # adds stretch to put the version info at the buttom
-        layout.addWidget(vers_label)  # adds the date modification/version number
+        layout.addWidget(version_label)  # adds the date modification/version number
 
         self.setLayout(layout)
 
