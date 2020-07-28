@@ -46,6 +46,8 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
     def home(self):  # defines the home function (the main window)
 
+        self.lr = None
+
         self.loaded_data = {}
 
         # ------ buttons + widgets -----------------------------
@@ -224,7 +226,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.Graph_axis.addItem(self.lr)
 
     def mouseMoved(self, evt):
-        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+        pos = evt[0]  # using signal proxy turns original arguments into a tuple
         if self.Graph_axis.sceneBoundingRect().contains(pos):
             mousePoint = self.vb.mapSceneToView(pos)
             index = int(mousePoint.x())
@@ -234,7 +236,6 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                     "<span style='font-size: 12pt'>Time=%0.1f ms, Total Duration: %0.1f sec" % (
                     mousePoint.x(), self.source_duration))
             self.mouse_vLine.setPos(mousePoint.x())
-            # self.mouse_hLine.setPos(mousePoint.y())
 
     def drag(self, ev):
         # global vb, lr

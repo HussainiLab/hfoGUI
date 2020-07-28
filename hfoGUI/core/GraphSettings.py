@@ -1,9 +1,9 @@
 from core.GUI_Utils import Worker, find_consec, background, Communicate
 from core.Tint_Matlab import ReadEEG, get_setfile_parameter, find_unit, detect_peaks, bits2uV, getspikes, \
     TintException, getpos, remBadTrack, speed2D, centerBox
-import os, time, json, functools, datetime
+import os, time, json, functools
 from scipy.signal import hilbert
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import core.filtering as filt
 import scipy
@@ -58,7 +58,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         self.mainWindow.vb.mouseDragEvent = self.drag  # overriding the drag event
 
-        self.mainWindow.graphics_window.scene().sigMouseClicked.connect(self.mousePress)
+        self.proxy_mouse_signal = pg.SignalProxy(
+            self.mainWindow.graphics_window.scene().sigMouseClicked, rateLimit=60, slot=self.mousePress,
+        )
 
         self.setWindowTitle("hfoGUI - Graph Settings Window")  # sets the title of the window
 
@@ -221,12 +223,10 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                     self.graph_header_option_fields[i, j + 1] = QtWidgets.QCheckBox(parameter[:-1])
                     self.graph_header_option_layout.addWidget(self.graph_header_option_fields[i, j + 1], *(i, j))
 
-        header_option_layout = QtWidgets.QHBoxLayout()
         option_index = 0
         for option in self.graph_header_options:
             if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                 continue
-            option_layout = QtWidgets.QHBoxLayout()
             self.option_field = option
             self.graphs.headerItem().setText(option_index, option)
             option_index += 1
@@ -262,29 +262,58 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         self.setDefaultOptions()
         self.setLayout(layout_score)
 
+        self.drag_start = None
+        self.drag_stop = None
+        self.lines = None
+
     def drag(self, ev):
-        # global vb, lr
-        if (ev.button() == QtCore.Qt.LeftButton):
-            self.mainWindow.lr.show()  # showing the linear region selector
+
+        if ev.button() != QtCore.Qt.LeftButton:
+            ev.ignore()
+            return
+
+        elif self.mainWindow.lr is None:
+            ev.ignore()
+            return
+
+        if ev.button() == QtCore.Qt.LeftButton:
+            ev.accept()
+            if ev.isStart():
+                self.mainWindow.lr.show()  # showing the linear region selector
+                self.drag_start = self.mainWindow.vb.mapToView(ev.pos()).x()
+                return
+            elif ev.isFinish():
+                self.drag_stop = self.mainWindow.vb.mapToView(ev.pos()).x()
+            else:
+                drag_stop = self.mainWindow.vb.mapToView(ev.pos()).x()
+                self.mainWindow.lr.setRegion([self.drag_start, drag_stop])
+                return
 
             # defining the selected region
-            self.mainWindow.lr.setRegion([self.mainWindow.vb.mapToView(ev.buttonDownPos()).x(), self.mainWindow.vb.mapToView(ev.pos()).x()])
-            self.mainWindow.score_x1 = self.mainWindow.vb.mapToView(ev.buttonDownPos()).x()  # defining the start of the selected region
-            self.mainWindow.score_x2 = self.mainWindow.vb.mapToView(ev.pos()).x()  # defining the end of the selected region
+            self.mainWindow.lr.setRegion([self.drag_start, self.drag_stop])
 
-            if hasattr(self, 'lines'):
-                if self.selected_time is not None:
-                    try:
-                        # self.lines.remove()
-                        # remove old lines that were created
-                        self.mainWindow.Graph_axis.removeItem(self.lines)
-                        self.selected_time = None
-                    except:
-                        pass
+            self.mainWindow.score_x1 = self.drag_start  # defining the start of the selected region
+            self.mainWindow.score_x2 = self.drag_stop  # defining the end of the selected region
 
-            ev.accept()
+            self.remove_lines()  # remove any lines marking central position for
+
+            self.drag_start = None
+            self.drag_stop = None
+
         else:
             pg.ViewBox.mouseDragEvent(self.mainWindow.vb, ev)
+
+    def remove_lines(self):
+        """
+        This method will remove any lines used to indicate the location of the TF-Plots centroid.
+        :return:
+        """
+        # skip removing lines if the lines do not exist
+        if self.selected_time is None or self.lines is None:
+            return
+
+        self.mainWindow.Graph_axis.removeItem(self.lines)
+        self.selected_time = None
 
     def initialize_attributes(self):
         self.active_sources = []
@@ -500,7 +529,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
             self.mainWindow.Graph_axis.addItem(self.mainWindow.mouse_vLine, ignoreBounds=True)
 
-            self.mainWindow.proxy = pg.SignalProxy(self.mainWindow.Graph_axis.scene().sigMouseMoved, rateLimit=100,
+            self.mainWindow.proxy = pg.SignalProxy(self.mainWindow.Graph_axis.scene().sigMouseMoved, rateLimit=60,
                                    slot=self.mainWindow.mouseMoved)
 
     def changeFilter(self, i, j):
@@ -726,7 +755,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         self.mainWindow.plot_thread_worker = Worker(self.Plot)
         self.mainWindow.plot_thread_worker.moveToThread(self.mainWindow.plot_thread)
         self.mainWindow.plot_thread_worker.start.emit("start")
-        # self.Plot() # plot the new added graph
 
     def sourceSelected(self):
         root = self.graphs.invisibleRootItem()
@@ -975,26 +1003,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
                 else:
                     pass
-
-                    '''
-                    lower_cutoff = float(lower_cutoff)
-                    upper_cutoff = float(upper_cutoff)
-
-                    Fs1 = lower_cutoff - 1
-                    if Fs1 <= 0:
-                        Fs1 = 0.1
-
-                        if Fs1 >= lower_cutoff:
-                            lower_cutoff = Fs1 + 0.1
-
-                    Fs2 = upper_cutoff + 1
-                    if Fs2 >= Fs / 2:
-                        Fs2 = Fs / 2 - 0.1
-                        if Fs2 <= upper_cutoff:
-                            upper_cutoff = Fs2 - 0.1
-
-                    EEG = filt.fftbandpass(EEGRaw, Fs, Fs1, lower_cutoff, upper_cutoff, Fs2)
-                    '''
 
                 EEGRaw = None
 
@@ -1477,64 +1485,39 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
     def mousePress(self, event):
 
-        if event.button() == 1:
+        event = event[0]
+        if event.button() == QtCore.Qt.LeftButton:
             mousePoint = self.mainWindow.vb.mapSceneToView(event.scenePos())
 
-            self.keydowntime = event.time()
             self.keydown_position = (mousePoint.x(), mousePoint.y())
+            self.remove_lines()  # remove any existing lines
 
-            delta_datetime = datetime.datetime.now().timestamp() - self.keydowntime
-            if delta_datetime <= 0.2:
-                # it will create a line only if the time between button press and release is small
-                if hasattr(self, 'lines'):
-                    if self.selected_time is not None:
-                        try:
-                            # remove old lines that were created
-                            self.mainWindow.Graph_axis.removeItem(self.lines)
-                            self.selected_time = None
-                        except:
-                            pass
+            if not hasattr(self.mainWindow, 'graph_max'):
+                return
 
-                if not hasattr(self.mainWindow, 'graph_max'):
-                    return
+            if hasattr(self.mainWindow, 'lr'):
+                # remove and replace the linear region selector so it doesn't show up at the same time as this line
+                self.mainWindow.Graph_axis.removeItem(self.mainWindow.lr)  # removes the lr
+                # self.mainWindow.create_lr()  # creates the lr again
+                self.newData.lr_signal.emit(
+                    'create')  # creates the lr again
+                self.mainWindow.score_x1 = None
+                self.mainWindow.score_x2 = None
 
-                if hasattr(self.mainWindow, 'lr'):
-                    # remove and replace the linear region selector so it doesn't show up at the same time as this line
-                    self.mainWindow.Graph_axis.removeItem(self.mainWindow.lr)  # removes the lr
-                    # self.mainWindow.create_lr()  # creates the lr again
-                    self.newData.lr_signal.emit(
-                        'create')  # creates the lr again
-                    self.mainWindow.score_x1 = None
-                    self.mainWindow.score_x2 = None
+            # create a black vertical line
+            self.lines = pg.InfiniteLine(pos=mousePoint.x(), angle=90, movable=False, pen=(0, 0, 0))
 
-                # create a black vertical line
-                self.lines = pg.InfiniteLine(pos=mousePoint.x(), angle=90,
-                                             movable=False, pen=(0, 0, 0))
-
-                # add the line to the plot
-                self.mainWindow.Graph_axis.addItem(self.lines)
-                self.selected_time = mousePoint.x()
-                self.RePlotTFSignal.myGUI_signal.emit('RePlot')
-
-            else:
-                # this is a long press, remove any lines that were drawn
-                if hasattr(self, 'lines'):
-                    if self.selected_time is not None:
-                        try:
-                            self.mainWindow.Graph_axis.removeItem(self.lines)
-                            self.selected_time = None
-                        except:
-                            pass
+            # add the line to the plot
+            self.mainWindow.Graph_axis.addItem(self.lines)
+            self.selected_time = mousePoint.x()
+            self.RePlotTFSignal.myGUI_signal.emit('RePlot')
 
     def getActiveSources(self):
 
-        root = self.graphs.invisibleRootItem()
         activeSources = []
         for item_count in range(self.graphs.topLevelItemCount()):
-            source_parameters = {}
             item = self.graphs.topLevelItem(item_count)
             option_index = 0
-
             for option in self.graph_header_options:
                 if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                     continue
