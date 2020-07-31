@@ -257,7 +257,7 @@ def get_active_tetrode(set_filename):
     active_tetrode = []
     active_tetrode_str = 'collectMask_'
 
-    with open(set_filename) as f:
+    with open(set_filename, encoding='cp1252') as f:
         for line in f:
 
             # collectMask_X Y, where x is the tetrode number, and Y is eitehr on or off (1 or 0)
@@ -284,7 +284,7 @@ def get_active_eeg(set_filename):
 
     active_eeg_dict = {}
 
-    with open(set_filename) as f:
+    with open(set_filename, encoding='cp1252') as f:
         for line in f:
 
             if active_eeg_str in line:
@@ -309,7 +309,7 @@ def get_active_eeg(set_filename):
 def is_egf_active(set_filename):
     active_egf_str = 'saveEGF'
 
-    with open(set_filename) as f:
+    with open(set_filename, encoding='cp1252') as f:
         for line in f:
 
             if active_egf_str in line:
@@ -562,7 +562,7 @@ def bits2uV(data, data_fpath, set_fpath=''):
     saved_eeg = np.array([])
     eeg_chan_map = np.array([])
 
-    with open(set_fpath, 'r') as f:
+    with open(set_fpath, 'r', encoding='cp1252') as f:
         for line in f:
 
             if 'ADC_fullscale_mv' in line:
