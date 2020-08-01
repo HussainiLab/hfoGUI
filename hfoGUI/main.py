@@ -11,7 +11,7 @@ from core.Score import ScoreWindow
 from core.TFplots import TFPlotWindow
 from core.ChooseFile import ChooseFile, new_File
 
-version = "1.0.9"
+version = "1.0.10"
 
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
