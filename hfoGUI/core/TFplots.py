@@ -566,8 +566,8 @@ class TFPlotWindow(QtWidgets.QWidget):
             # interpolation will allow the graph to look less pixelated
 
             f = interpolate.interp2d(x, freq, power, kind='linear')
-            x_new = np.linspace(x[0], x[-1], num=100)
-            y_new = np.linspace(freq[0], freq[-1], num=100)
+            x_new = np.linspace(x[0], x[-1], num=10e2)
+            y_new = np.linspace(freq[0], freq[-1], num=10e2)
             power = f(x_new, y_new)
 
             # colormap = cm.get_cmap("jet")  # cm.get_cmap("CMRmap")
