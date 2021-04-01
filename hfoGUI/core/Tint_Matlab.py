@@ -423,16 +423,22 @@ def arena_config(posx, posy, arena, conversion='', center='', flip_y=True):
     positions due to the camera position. However in the virtualmaze you might not want to flip y values.
     :return:
     """
-    if 'BehaviorRoom' in arena:
+    if arena == 'BehaviorRoom':
         center = np.array([314.75, 390.5])
         conversion = 495.5234
-    elif 'BehaviorRoom2' in arena:
+    elif arena == 'BehaviorRoom2':
         # added december 12th, 2018
         center = np.array([314.75, 390.5])
         conversion = 485.1185
-    elif 'DarkRoom' in arena:
+    elif arena == 'DarkRoom':
         center = np.array([346.5, 273.5])
-        conversion = 711.3701
+        conversion = 711.3701    
+    elif arena == 'DarkRoom2': 
+        center = np.array([168.0, 168.50])
+        conversion = 665.0
+    elif arena == 'Closet': 
+        center = np.array([151.00, 147.50])
+        conversion = 589.0
     elif 'room4' in arena:
         center = np.array([418, 186])
         conversion = 313
