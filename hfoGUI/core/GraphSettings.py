@@ -130,7 +130,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         options = ['No', 'Yes']
 
                     elif 'Arena' in parameter:
-                        options = ['DarkRoom', 'DarkRoom2', 'Closet', 'BehaviorRoom', 'BehavirRoom2', 'Room4']
+                        options = ['DarkRoom', 'DarkRoom2', 'Closet', 'BehaviorRoom', 'BehaviorRoom2', 'Room4']
 
                     elif 'Load Data Profile' in parameter:
                         options = ['None']
