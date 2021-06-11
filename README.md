@@ -16,6 +16,8 @@ hfoGUI was initially a Python package designed to visualize High Frequency Oscil
 Since it utilizes PyQt5 as the GUI framework it should be available to a wide variety of Python versions and Operating Systems. However it was only tested on Python 3.7 with Windows 10. I do recommend using the latest version of Python as it makes it easy to download some of these C++ based dependencies. 
 
 # Project Documentation
+- TLDR. No Install Windows ONLY version. Download pre-built zip file, unzip contents to folder and run hfoGUI.exe. 
+- [hfoGUI] (../master/hfoGUI.zip)
 - [Installation](https://geba.technology/project/hfogui)
 - [User Guide](https://geba.technology/project/hfogui-hfogui-user-guide)
 
