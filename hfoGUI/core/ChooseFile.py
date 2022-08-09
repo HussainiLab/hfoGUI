@@ -10,8 +10,8 @@ class ChooseFile(QtWidgets.QWidget):
     def __init__(self, main, source):
         super(ChooseFile, self).__init__()
         background(self)
-        width = self.deskW / 5
-        height = self.deskH / 5
+        width = int(self.deskW / 5)
+        height = int(self.deskH / 5)
         self.setGeometry(0, 0, width, height)
 
         if 'lfp' in source.lower():

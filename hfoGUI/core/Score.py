@@ -56,8 +56,8 @@ class ScoreWindow(QtWidgets.QWidget):
         self.initialize_attributes()
 
         background(self)
-        width = self.deskW / 6
-        height = self.deskH / 1.5
+        width = int(self.deskW / 6)
+        height = int(self.deskH / 1.5)
 
         self.setWindowTitle(
             os.path.splitext(os.path.basename(__file__))[0] + " - Score Window")  # sets the title of the window
@@ -416,7 +416,7 @@ class ScoreWindow(QtWidgets.QWidget):
         # root = self.scores.invisibleRootItem()
         iterator = QtWidgets.QTreeWidgetItemIterator(self.scores)
 
-        
+
 
         ID = []
         while iterator.value():
@@ -1702,8 +1702,8 @@ class SettingsViewer(QtWidgets.QWidget):
     def __init__(self, filename):
         super(SettingsViewer, self).__init__()
         background(self)
-        width = self.deskW / 3
-        height = self.deskH / 3
+        width = int(self.deskW / 3)
+        height = int(self.deskH / 3)
         self.setGeometry(0, 0, width, height)
 
         self.setWindowTitle("Settings Viewer Window")

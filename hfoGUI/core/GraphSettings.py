@@ -33,8 +33,8 @@ class GraphSettingsWindows(QtWidgets.QWidget):
     def __init__(self, main):
         super(GraphSettingsWindows, self).__init__()
         background(self)
-        width = self.deskW / 4.2
-        height = self.deskH / 1.5
+        width = int(self.deskW / 4.2)
+        height = int(self.deskH / 1.5)
 
         self.newData = update_plots_signal()
         self.newData.mysignal.connect(self.update_plots)
@@ -66,7 +66,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         main_location = main.frameGeometry().getCoords()
 
-        self.setGeometry(main_location[2] - 1.5*main_location[-1] - 45, main_location[1] + 30, width, height)
+        self.setGeometry(int(main_location[2] - 1.5*main_location[-1] - 45), int(main_location[1] + 30), width, height)
 
         self.FilterResponse = plt.figure(figsize=(3, 3))
         self.FilterResponseCanvas = FigureCanvas(self.FilterResponse)

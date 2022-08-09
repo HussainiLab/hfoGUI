@@ -26,8 +26,8 @@ def background(self):  # defines the background for each window
         os.mkdir(self.SETTINGS_DIR)
 
     self.setWindowIcon(QtGui.QIcon(os.path.join(self.IMG_DIR, 'GEBA_Logo.png')))  # declaring the icon image
-    self.deskW, self.deskH = QtWidgets.QDesktopWidget().availableGeometry().getRect()[2:]  #gets the window resolution
-    self.setGeometry(0, 0, self.deskW/2, self.deskH/1.5)  # Sets the window size, 800x460 is the size of our window
+    self.deskW, self.deskH = QtWidgets.QDesktopWidget().availableGeometry().getRect()[2:] #gets the window resolution
+    self.setGeometry(0, 0, int(self.deskW/2), int(self.deskH/1.5))  # Sets the window size, 800x460 is the size of our window
 
     QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create('Cleanlooks'))
 
