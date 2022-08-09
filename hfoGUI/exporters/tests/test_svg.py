@@ -4,7 +4,7 @@ SVG export test
 from __future__ import division, print_function, absolute_import
 import pyqtgraph as pg
 from pyqtgraph.exporters import SVGExporter
-from pyqtgraph.Qt.QtGui import QGraphicsScene, QGraphicsRectItem
+from pyqtgraph.Qt.QtWidgets import QGraphicsScene, QGraphicsRectItem
 import tempfile
 import os
 

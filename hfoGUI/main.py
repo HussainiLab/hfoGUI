@@ -268,12 +268,12 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             self.get_parameters()
             self.scrollbar.setMinimum(0)
             try:
-                self.scrollbar.setMaximum(self.SourceLength - (self.windowsize/1000 * self.SourceFs))
+                self.scrollbar.setMaximum(int(self.SourceLength - (self.windowsize/1000 * self.SourceFs)))
             except TypeError:
                 return
             self.scrollbar.setPageStep(self.windowsize/1000 * self.SourceFs / 3)
             self.scrollbar.setSingleStep(self.windowsize/1000 * self.SourceFs / 15)
-            self.scrollbar.setValue((self.current_time/1000)*self.SourceFs)
+            self.scrollbar.setValue(int((self.current_time/1000)*self.SourceFs))
             self.Graph_axis.setXRange(self.current_time, self.current_time + self.windowsize)
             self.Graph_axis.setYRange(0, self.graph_max)
 

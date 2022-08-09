@@ -348,7 +348,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
             self.progdialog.setLabelText(kwargs['text'])
 
         elif 'setValue' in action:
-            self.progdialog.setValue(kwargs['value'])
+            self.progdialog.setValue(int(kwargs['value']))
 
     def plot_response(self):
 
@@ -1233,7 +1233,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         # --- set the mins and maxs of the scrollbar -----
         self.mainWindow.scrollbar.setMinimum(0)
-        self.mainWindow.scrollbar.setMaximum(len(data) - (self.mainWindow.windowsize / 1000 * Fs))
+        self.mainWindow.scrollbar.setMaximum(int(len(data) - (self.mainWindow.windowsize / 1000 * Fs)))
         self.mainWindow.scrollbar.setPageStep(2000)
         self.mainWindow.scrollbar.setSingleStep(1000)
 
@@ -1636,7 +1636,7 @@ class custom_vlines(pg.GraphicsObject):
 
     def setBounds(self, bounds):
         self.maxRange = bounds
-        self.setValue(self.value())
+        self.setValue(int(self.value()))
 
     def setPen(self, *args, **kwargs):
         self.pen = pg.fn.mkPen(*args, **kwargs)
