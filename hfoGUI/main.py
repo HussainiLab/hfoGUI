@@ -115,7 +115,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         # ------------------- setting the graph -----------------------
         self.GraphLoaded = False
-        self.graphics_window = pg.GraphicsWindow()
+        self.graphics_window = pg.GraphicsLayoutWidget()
 
         self.Graph_label = pg.LabelItem(justify='right')  # adds the Label that will be used for mouse interactions
 
