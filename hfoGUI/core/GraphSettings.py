@@ -9,8 +9,9 @@ import core.filtering as filt
 import scipy
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtWidgets
+from pyqtgraph.np import linspace
 from scipy import signal
-import numpy as np
+
 
 
 class update_plots_signal(QtCore.QObject):
@@ -1170,7 +1171,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
             data = np.multiply(source[0], self.gain_sources[i])
             self.source_lengths.append(len(data))
             Fs = source[1]
-            data_times = 1000 * np.linspace(0, len(data) / Fs, num=len(data), endpoint=False)
+            data_times = 1000 * linspace(0, len(data) / Fs, num=len(data), endpoint=False)
             shift_amount = - np.nanmin(data) + previous_source_max  # calculating shift
 
             envelope = None
@@ -1204,7 +1205,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 source = self.source_values[i]
                 data = source[0]
                 Fs = source[1]
-                data_times = 1000 * np.linspace(0, len(data) / Fs, num=len(data), endpoint=False)
+                data_times = 1000 * linspace(0, len(data) / Fs, num=len(data), endpoint=False)
                 peak_indices = detect_peaks(data, mpd=1, threshold=0)
                 peak_times = data_times[peak_indices]
 

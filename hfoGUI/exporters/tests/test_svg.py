@@ -3,6 +3,7 @@ SVG export test
 """
 from __future__ import division, print_function, absolute_import
 import pyqtgraph as pg
+from pyqtgraph.exporters import SVGExporter
 import tempfile
 import os
 
