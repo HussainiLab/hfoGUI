@@ -4,6 +4,7 @@ SVG export test
 from __future__ import division, print_function, absolute_import
 import pyqtgraph as pg
 from pyqtgraph.exporters import SVGExporter
+from pyqtgraph.Qt.QtGui import QGraphicsScene, QGraphicsRectItem
 import tempfile
 import os
 
@@ -33,7 +34,7 @@ def test_plotscene():
 def test_simple():
     tempfilename = tempfile.NamedTemporaryFile(suffix='.svg').name
     print("using %s as a temporary file" % tempfilename)
-    scene = pg.QtGui.QGraphicsScene()
+    scene = QGraphicsScene()
     #rect = pg.QtGui.QGraphicsRectItem(0, 0, 100, 100)
     #scene.addItem(rect)
     #rect.setPos(20,20)
@@ -69,10 +70,12 @@ def test_simple():
     scene.addItem(grp2)
     grp2.scale(100,100)
 
-    rect3 = pg.QtGui.QGraphicsRectItem(0,0,2,2)
+    rect3 = QGraphicsRectItem(0,0,2,2)
     rect3.setPen(pg.mkPen(width=1, cosmetic=False))
     grp2.addItem(rect3)
 
-    ex = pg.exporters.SVGExporter(scene)
+    ex = SVGExporter(scene)
     ex.export(fileName=tempfilename)
     os.unlink(tempfilename)
+
+test_simple()
