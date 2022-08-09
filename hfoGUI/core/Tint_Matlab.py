@@ -209,7 +209,7 @@ def getpos(pos_fpath, arena, method='', flip_y=True):
         if method == 'raw':
             return x, y, t, sample_rate
 
-        t = np.divide(t, np.float(timebase))  # converting the frame number from Axona to the time value
+        t = np.divide(t, float(timebase))  # converting the frame number from Axona to the time value
 
         # values that are NaN are set to 1023 in Axona's system, replace these values by NaN's
 

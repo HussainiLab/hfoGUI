@@ -1149,7 +1149,8 @@ def HilbertDetection(self):
 
         #  starts by finding consecutive indices where the row values are the same
         row_consec = np.asarray(
-            find_same_consec(row))  # matrix where each row contains the indices of the each eoi within the col array
+            find_same_consec(row),
+            dtype=object)  # matrix where each row contains the indices of the each eoi within the col array
 
         # column[i] belongs to row[i] thus once you find the consecutive rows,
         # their respective columns have the same indices
@@ -1191,7 +1192,8 @@ def HilbertDetection(self):
 
         #  starts by finding consecutive indices where the row values are the same
         row_consec = np.asarray(
-            find_same_consec(row))  # matrix where each row contains the indices of the each eoi within the col array
+            find_same_consec(row),
+            dtype=object)  # matrix where each row contains the indices of the each eoi within the col array
 
         eoi_stops = [col[consec_value] for consec_value in
                      row_consec]  # contains the column index where the EOI reaches below the threshold

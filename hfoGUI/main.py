@@ -243,10 +243,8 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             pg.ViewBox.mouseDragEvent(self.vb, ev)
 
     def set_lr(self, value1, value2):
-        value1 = np.float(value1)
-        value2 = np.float(value2)
-        self.score_x1 = value1
-        self.score_x2 = value2
+        self.score_x1 = float(value1)
+        self.score_x2 = float(value2)
         self.lr.show()
         self.lr.setRegion([value1, value2])
 

@@ -927,8 +927,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 return
 
             if self.mainWindow.source_duration is None:
-                self.mainWindow.source_duration = np.float(get_setfile_parameter('duration',
-                                                                                 self.mainWindow.current_set_filename))
+                self.mainWindow.source_duration = float(get_setfile_parameter('duration',self.mainWindow.current_set_filename))
 
             if '.eeg' in source_filename or '.egf' in source_filename:
                 if source_filename not in self.loaded_sources.keys():
@@ -972,6 +971,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
                 EEGRaw = self.loaded_sources[source_filename][0]
                 Fs = self.loaded_sources[source_filename][1]
+
+
+
                 # ------- filter the EEG data for the ----------------
 
                 if 'fft' not in filter_method:
