@@ -364,12 +364,12 @@ class TFPlotWindow(QtWidgets.QWidget):
             else:
                 pass
 
-            plot_window_max = np.int(plot_window_max)
-            plot_window_min = np.int(plot_window_min)
+            plot_window_max = int(plot_window_max)
+            plot_window_min = int(plot_window_min)
 
             if enforced_1s:
-                plot_window_max_1s = np.int(plot_window_max_1s)
-                plot_window_min_1s = np.int(plot_window_min_1s)
+                plot_window_max_1s = int(plot_window_max_1s)
+                plot_window_min_1s = int(plot_window_min_1s)
 
             t = (1000 / self.Fs) * np.arange(plot_window_min, plot_window_max + 1)  # ms
 

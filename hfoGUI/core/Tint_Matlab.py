@@ -1035,7 +1035,7 @@ def detect_peaks(x, mph=None, mpd=1, threshold=0, edge='rising',
     >>> detect_peaks(x, threshold = 2, show=True)
     """
 
-    x = np.atleast_1d(x).astype('float64')
+    x = np.atleast_1d(x).astype('float')
     if x.size < 3:
         return np.array([], dtype=int)
     if valley:

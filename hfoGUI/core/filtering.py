@@ -376,7 +376,7 @@ def fft_plot(Fs, Y):
     T = N / Fs
 
     frq = k / T  # two sides frequency range
-    frq = frq[range(np.int(N / 2))]  # one side frequency range
+    frq = frq[range(int(N / 2))]  # one side frequency range
 
     FFT = fftpack.fft(Y)  # fft computing and normalization
     fig, ax = plt.subplots(1)
@@ -401,7 +401,7 @@ def FastFourier(Fs, Y):
     T = N / Fs
 
     frq = k / T  # two sides frequency range
-    frq = frq[range(np.int(N / 2))]  # one side frequency range
+    frq = frq[range(int(N / 2))]  # one side frequency range
 
     FFT = fftpack.fft(Y)  # fft computing and normalization
 

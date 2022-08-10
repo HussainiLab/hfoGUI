@@ -4,20 +4,20 @@
 # Modified Adrian Foy Sep 2018
 
 import sys, struct
-from intanutil.qstring import read_qstring
+from .qstring import read_qstring
 
 def read_header(fid):
     """Reads the Intan File Format header from the given file."""
 
     # Check 'magic number' at beginning of file to make sure this is an Intan
     # Technologies RHD2000 data file.
-    magic_number, = struct.unpack('<I', fid.read(4)) 
+    magic_number, = struct.unpack('<I', fid.read(4))
     if magic_number != int('c6912702', 16): raise Exception('Unrecognized file type.')
 
     header = {}
     # Read version number.
     version = {}
-    (version['major'], version['minor']) = struct.unpack('<hh', fid.read(4)) 
+    (version['major'], version['minor']) = struct.unpack('<hh', fid.read(4))
     header['version'] = version
 
     print('')
@@ -28,7 +28,7 @@ def read_header(fid):
 
     # Read information of sampling rate and amplifier frequency settings.
     header['sample_rate'], = struct.unpack('<f', fid.read(4))
-    (freq['dsp_enabled'], freq['actual_dsp_cutoff_frequency'], freq['actual_lower_bandwidth'], freq['actual_upper_bandwidth'], 
+    (freq['dsp_enabled'], freq['actual_dsp_cutoff_frequency'], freq['actual_lower_bandwidth'], freq['actual_upper_bandwidth'],
     freq['desired_dsp_cutoff_frequency'], freq['desired_lower_bandwidth'], freq['desired_upper_bandwidth']) = struct.unpack('<hffffff', fid.read(26))
 
 
@@ -53,13 +53,13 @@ def read_header(fid):
     header['num_temp_sensor_channels'] = 0
     if (version['major'] == 1 and version['minor'] >= 1) or (version['major'] > 1) :
         header['num_temp_sensor_channels'], = struct.unpack('<h', fid.read(2))
-        
+
     # If data file is from GUI v1.3 or later, load eval board mode.
     header['eval_board_mode'] = 0
     if ((version['major'] == 1) and (version['minor'] >= 3)) or (version['major'] > 1) :
         header['eval_board_mode'], = struct.unpack('<h', fid.read(2))
-        
-        
+
+
     header['num_samples_per_data_block'] = 60
     # If data file is from v2.0 or later (Intan Recording Controller), load name of digital reference channel
     if (version['major'] > 1):
@@ -120,7 +120,7 @@ def read_header(fid):
                         header['board_dig_out_channels'].append(new_channel)
                     else:
                         raise Exception('Unknown channel type.')
-                        
+
     # Summarize contents of data file.
     header['num_amplifier_channels'] = len(header['amplifier_channels'])
     header['num_aux_input_channels'] = len(header['aux_input_channels'])

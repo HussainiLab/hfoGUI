@@ -60,7 +60,7 @@ def s_transform(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge
 
     """
 
-    timeseries = timeseries.astype(np.float64)
+    timeseries = timeseries.astype(float)
 
     Fs = 1 / sample_rate
 
