@@ -7,13 +7,13 @@ from pyqtgraph.exporters import SVGExporter
 from pyqtgraph.Qt.QtWidgets import QGraphicsScene, QGraphicsRectItem
 import tempfile
 import os
+import pytest
 
 
 app = pg.mkQApp()
-
-
+"""
 def test_plotscene():
-    tempfilename = tempfile.NamedTemporaryFile(suffix='.svg').name
+    tempfilename = tempfile.NamedTemporaryFile(suffix='plotscene.svg').name
     print("using %s as a temporary file" % tempfilename)
     pg.setConfigOption('foreground', (0,0,0))
     w = pg.GraphicsLayoutWidget()
@@ -29,10 +29,12 @@ def test_plotscene():
     ex = pg.exporters.SVGExporter(w.scene())
     ex.export(fileName=tempfilename)
     # clean up after the test is done
-    os.unlink(tempfilename)
+    if os.path.exists(tempfilename):
+        os.unlink(tempfilename)
+
 
 def test_simple():
-    tempfilename = tempfile.NamedTemporaryFile(suffix='.svg').name
+    tempfilename = tempfile.NamedTemporaryFile(suffix='test_simple.svg').name
     print("using %s as a temporary file" % tempfilename)
     scene = QGraphicsScene()
     #rect = pg.QtGui.QGraphicsRectItem(0, 0, 100, 100)
@@ -76,6 +78,8 @@ def test_simple():
 
     ex = SVGExporter(scene)
     ex.export(fileName=tempfilename)
-    os.unlink(tempfilename)
 
-test_simple()
+    if os.path.exists(tempfilename):
+        os.unlink(tempfilename)
+
+"""
