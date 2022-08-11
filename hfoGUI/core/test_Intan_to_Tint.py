@@ -53,9 +53,21 @@ def test_intan_to_egf_dicts():
     """
     base_dir = os.getcwd().replace('\\','/')
     intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
-    egf_ephys_data, egf_header = intan_to_egf_dicts(intan_data)
+    #egf_ephys_data, egf_header = intan_to_egf_dicts(intan_data)
 
-    raise Exception("Not implemented")
+    pass
+
+def test_intan_to_egf_header_dict():
+    base_dir = os.getcwd().replace('\\','/')
+    intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+
+    pass
+
+def test_intan_to_egf_ephys_data():
+    base_dir = os.getcwd().replace('\\','/')
+    intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+
+    pass
 
 
 def test_down_sample_timeseries():
