@@ -3,6 +3,52 @@ from .load_intan_rhd_format.load_intan_rhd_format import read_rhd_data
 import numpy as np
 
 
+def write_axona_lfp(filepath, egf_ephys_data, egf_header):
+    session_path, session_filename = os.path.split(filepath)
+    num_samples = int(len(data))
+    trial_date, trial_time = session_datetime(session_filename)
+    if '.egf' in session_filename:
+        egf = True
+    else:
+        egf = False
+
+    with open(filepath, 'w') as f:
+        date = 'trial_date %s' % (trial_date)
+        time_head = '\ntrial_time %s' % (trial_time)
+        experimenter = '\nexperimenter %s' % (session_parameters['experimenter'])
+        comments = '\ncomments %s' % (session_parameters['comments'])
+        duration = '\nduration %d' % (session_parameters['duration'])
+        sw_version = '\nsw_version %s' % (session_parameters['version'])
+        num_chans = '\nnum_chans 1'
+
+        if egf:
+            sample_rate = '\nsample_rate %d Hz' % (session_parameters['Fs_EGF'])
+            data = struct.pack('<%dh' % (num_samples), *[int(eeg_data) for eeg_data in data.tolist()])
+            b_p_sample = '\nbytes_per_sample 2'
+            num_EEG_samples = '\nnum_EGF_samples %d' % (num_samples)
+
+        else:
+            sample_rate = '\nsample_rate %d.0 hz' % (session_parameters['Fs_EEG'])
+            data = struct.pack('>%db' % (num_samples), *[int(eeg_data) for eeg_data in data.tolist()])
+            b_p_sample = '\nbytes_per_sample 1'
+            num_EEG_samples = '\nnum_EEG_samples %d' % (num_samples)
+
+        eeg_p_position = '\nEEG_samples_per_position %d' % (5)
+
+        start = '\ndata_start'
+
+        if egf:
+            write_order = [date, time_head, experimenter, comments, duration, sw_version, num_chans,
+                           sample_rate, b_p_sample, num_EEG_samples, start]
+        else:
+            write_order = [date, time_head, experimenter, comments, duration, sw_version, num_chans,
+                           sample_rate, eeg_p_position, b_p_sample, num_EEG_samples, start]
+
+        f.writelines(write_order)
+
+    with open(filepath, 'rb+') as f:
+        f.seek(0, 2)
+        f.writelines([data, bytes('\r\ndata_end\r\n', 'utf-8')])
 
 
 def intan_to_egf_dicts(intan_data: dict) -> dict:
