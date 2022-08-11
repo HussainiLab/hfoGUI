@@ -1,7 +1,7 @@
 from .load_intan_rhd_format.load_intan_rhd_format import read_rhd_data
 
 from .Intan_to_Tint import (
-    intan_to_egf
+    intan_to_egf_dicts
     ,down_sample_timeseries
 )
 
@@ -22,13 +22,22 @@ def test_read_rhd_data():
     """
     Test that the data is read correctly.
     """
-    base_dir = os.getcwd().replace('\\','/')
+    #base_dir = os.getcwd().replace('\\','/')
 
-    data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+    #data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
 
-    for header in data.keys():
-        print(header)
-        print(data[header])
+    data_path = "K:\ke\sta\data\cumc\INTAN_TEST\RADHA_MOUSE_AJ_950um_AQ_950um_220411_142605.rhd"
+
+    data = read_rhd_data(data_path)
+
+    #for i in range(len(data["amplifier_data"])):
+    #    print(data["amplifier_channels"][i]["custom_channel_name"])
+    #    print(data["amplifier_data"][i])
+
+
+    #for header in data:
+    #    print(header)
+    #    print(data[header], "\n\n")
 
     #Check the types of the data we will use.
     assert type(data) == dict
@@ -38,16 +47,15 @@ def test_read_rhd_data():
     for channel in data['spike_triggers']:
         assert type(channel) == dict
 
-
-def test_intan_to_egf():
+def test_intan_to_egf_dicts():
     """
     Test that the intan data is converted to egf.
     """
     base_dir = os.getcwd().replace('\\','/')
     intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
-    egf_data = intan_to_egf(intan_data)
+    egf_ephys_data, egf_header = intan_to_egf_dicts(intan_data)
 
-    assert egf_data == None
+    raise Exception("Not implemented")
 
 
 def test_down_sample_timeseries():
