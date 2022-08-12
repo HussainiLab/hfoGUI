@@ -1,7 +1,7 @@
 from .load_intan_rhd_format.load_intan_rhd_format import read_rhd_data
 
 from .Intan_to_Tint import (
-    intan_to_egf_dicts
+    intan_to_lfp_dicts
     ,down_sample_timeseries
 )
 
@@ -26,7 +26,7 @@ def test_read_rhd_data():
 
     #data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
 
-    data_path = "K:\ke\sta\data\cumc\INTAN_TEST\RADHA_MOUSE_AJ_950um_AQ_950um_220411_142605.rhd"
+    data_path = "K:/ke/sta/data/cumc/INTAN_TEST/RADHA_MOUSE_AJ_950um_AQ_950um_220411_142605.rhd"
 
     data = read_rhd_data(data_path)
 
@@ -47,25 +47,36 @@ def test_read_rhd_data():
     for channel in data['spike_triggers']:
         assert type(channel) == dict
 
-def test_intan_to_egf_dicts():
+def test_intan_to_lfp_dicts():
     """
-    Test that the intan data is converted to egf.
+    Test that the intan data is converted to lfp.
     """
     base_dir = os.getcwd().replace('\\','/')
     intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
-    #egf_ephys_data, egf_header = intan_to_egf_dicts(intan_data)
+    #lfp_ephys_data, lfp_header = intan_to_lfp_dicts(intan_data)
+    # Test for egf
+
+    # Test for eeg
 
     pass
 
-def test_intan_to_egf_header_dict():
+def test_intan_to_lfp_header_dict():
     base_dir = os.getcwd().replace('\\','/')
     intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+
+    # Test for egf
+
+    # Test for eeg
 
     pass
 
-def test_intan_to_egf_ephys_data():
+def test_intan_to_lfp_ephys_data():
     base_dir = os.getcwd().replace('\\','/')
     intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+
+    # Test for egf
+
+    # Test for eeg
 
     pass
 
