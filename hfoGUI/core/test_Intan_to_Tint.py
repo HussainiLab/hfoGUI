@@ -1,7 +1,10 @@
 from .load_intan_rhd_format.load_intan_rhd_format import read_rhd_data
 
 from .Intan_to_Tint import (
-    intan_to_lfp_dicts
+    create_eeg_and_egf_files
+    ,intan_to_lfp_dicts
+    ,intan_ephys_to_lfp_dict
+    ,intan_to_lfp_header_dict
     ,down_sample_timeseries
 )
 
@@ -9,7 +12,8 @@ import os
 import numpy as np
 import pytest
 
-
+base_dir = os.getcwd().replace('\\','/')
+intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
 
 def test_good_base_directory():
     """
@@ -17,6 +21,10 @@ def test_good_base_directory():
     """
     base_dir = os.getcwd().replace('\\','/')
     assert base_dir == "K:/ke/ops/cumc/repos/hfoGUI"
+
+def test_create_eeg_and_egf_files():
+    create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs')
+
 
 def test_read_rhd_data():
     """
@@ -70,15 +78,35 @@ def test_intan_to_lfp_header_dict():
 
     pass
 
-def test_intan_to_lfp_ephys_data():
-    base_dir = os.getcwd().replace('\\','/')
-    intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+def test_intan_ephys_to_lfp_dict():
 
     # Test for egf
+    _test_intan_ephys_to_lfp_dict(egf=True)
 
     # Test for eeg
+    _test_intan_ephys_to_lfp_dict(egf=False)
 
-    pass
+
+def _test_intan_ephys_to_lfp_dict(egf:bool):
+    #base_dir = os.getcwd().replace('\\','/')
+    #intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+    sample_rate = intan_data['frequency_parameters']['amplifier_sample_rate']
+    if egf:
+        lfp_ephys_data = intan_ephys_to_lfp_dict(intan_data, egf=True)
+        new_sample_rate = 4.8e3
+    else:
+        lfp_ephys_data = intan_ephys_to_lfp_dict(intan_data, egf=False)
+        new_sample_rate = 250.0
+
+    del lfp_ephys_data["time"]
+
+    assert len(lfp_ephys_data) == len(intan_data['amplifier_data'])
+
+    for i, channel in enumerate(lfp_ephys_data.keys()):
+        new_len = len(lfp_ephys_data[channel])
+        old_len = len(intan_data['amplifier_data'][i])
+
+        assert new_len <= old_len / (sample_rate / new_sample_rate) + 1 and new_len >= old_len / (sample_rate / new_sample_rate) - 1
 
 
 def test_down_sample_timeseries():
@@ -92,4 +120,4 @@ def test_down_sample_timeseries():
     downsampled_data = down_sample_timeseries(data, sample_rate, new_sample_rate)
 
     # assert that the length of downsampled_data is within + or - 1 of the formula.
-    assert len(downsampled_data) <= len(data) / (sample_rate / new_sample_rate) + 1 and len(downsampled_data) >= len(data) / (sample_rate / new_sample_rate) - 1
+    assert len(downsampled_data) == round(len(data) / (sample_rate / new_sample_rate) - 1)
