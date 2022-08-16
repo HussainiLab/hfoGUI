@@ -51,7 +51,7 @@ def read_header(fid):
 
     (header['desired_impedance_test_frequency'], header['actual_impedance_test_frequency']) = struct.unpack('<ff', fid.read(8))
     (header['amp_settle_mode'], header['charge_recovery_mode']) = struct.unpack('<hh', fid.read(4))
-    
+
     frequency_parameters = {}
     frequency_parameters['amplifier_sample_rate'] = header['sample_rate']
     frequency_parameters['board_adc_sample_rate'] = header['sample_rate']
@@ -68,7 +68,7 @@ def read_header(fid):
     frequency_parameters['notch_filter_frequency'] = header['notch_filter_frequency']
     frequency_parameters['desired_impedance_test_frequency'] = header['desired_impedance_test_frequency']
     frequency_parameters['actual_impedance_test_frequency'] = header['actual_impedance_test_frequency']
-    
+
     header['frequency_parameters'] = frequency_parameters
 
     (header['stim_step_size'],
@@ -95,7 +95,6 @@ def read_header(fid):
 
     # Read signal summary from data file header.
     number_of_signal_groups, = struct.unpack('<h', fid.read(2))
-    print('n signal groups {}'.format(number_of_signal_groups))
 
     for signal_group in range(1, number_of_signal_groups + 1):
         signal_group_name = read_qstring(fid)

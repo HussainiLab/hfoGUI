@@ -16,6 +16,8 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
     intan_sample_rate = intan_data['frequency_parameters']['amplifier_sample_rate']
     lfp_ephys_data = intan_ephys_to_lfp_dict(intan_data)
     time = lfp_ephys_data['time']
+    egf_time = down_sample_timeseries(time, intan_sample_rate, 4.8e3)
+    eeg_time = down_sample_timeseries(time, 4.8e3, 250.0)
 
     for channel in lfp_ephys_data:
         if channel == 'time':
@@ -38,11 +40,14 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
 
             egf_ephys_data = egf_ephys_data.astype(np.int16)
 
-
-
             efg_header = intan_to_lfp_header_dict(intan_data, True)
 
-            write_egf_file(egf_ephys_data, efg_header, channel, session_name, output_dir)
+            try:
+                assert len(egf_ephys_data) == len(egf_time)
+            except:
+                raise AssertionError("len(egf_ephys_data) ({}) == len(egf_time) ({}). Values must be equal for write_egf_file.".format(len(egf_ephys_data), len(egf_time)))
+
+            write_egf_file(egf_ephys_data, egf_time, efg_header, channel, session_name, output_dir)
 
 
             # EEG
@@ -60,11 +65,17 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
 
             eeg_header = intan_to_lfp_header_dict(intan_data, False)
 
-            write_eeg_file(eeg_ephys_data, eeg_header, channel, session_name, output_dir)
+            try:
+                assert len(eeg_ephys_data) == len(eeg_time)
+                continue
+            except:
+                raise AssertionError("len(eeg_ephys_data) ({}) == len(eeg_time) ({}). These values must be equal for write_eeg_file function.".format(len(eeg_ephys_data), len(eeg_time)))
+
+            write_eeg_file(eeg_ephys_data, eeg_time, eeg_header, channel, session_name, output_dir)
 
 
 
-def write_eeg_file(eeg_single_unit_data, eeg_header_dict, channel_name, session_name, output_dir):
+def write_eeg_file(eeg_single_unit_data, eeg_time,eeg_header_dict, channel_name, session_name, output_dir):
 
     eeg_filepath = os.path.join(output_dir, session_name + '_' + channel_name + '.eeg')
 
@@ -136,7 +147,7 @@ def write_eeg(filepath, data, Fs, set_filename=None):
         f.seek(0, 2)
         f.writelines([data, bytes('\r\ndata_end\r\n', 'utf-8')])
 
-def write_egf_file(egf_single_unit_data, egf_header_dict, channel_name, session_name, output_dir):
+def write_egf_file(egf_single_unit_data, efg_time, egf_header_dict, channel_name, session_name, output_dir):
 
     eeg_filepath = os.path.join(output_dir, session_name + '_' + channel_name + '.egf')
 

@@ -20,10 +20,6 @@ def read_header(fid):
     (version['major'], version['minor']) = struct.unpack('<hh', fid.read(4))
     header['version'] = version
 
-    print('')
-    print('Reading Intan Technologies RHD2000 Data File, Version {}.{}'.format(version['major'], version['minor']))
-    print('')
-
     freq = {}
 
     # Read information of sampling rate and amplifier frequency settings.
@@ -87,7 +83,6 @@ def read_header(fid):
     # Read signal summary from data file header.
 
     number_of_signal_groups, = struct.unpack('<h', fid.read(2))
-    print('n signal groups {}'.format(number_of_signal_groups))
 
     for signal_group in range(1, number_of_signal_groups + 1):
         signal_group_name = read_qstring(fid)
