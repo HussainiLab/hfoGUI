@@ -1,4 +1,5 @@
 from .load_intan_rhd_format.load_intan_rhd_format import read_rhd_data
+from .filtering import notch_filt, iirfilt, get_a_b
 
 import os
 import numpy as np
@@ -16,8 +17,6 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
     intan_sample_rate = intan_data['frequency_parameters']['amplifier_sample_rate']
     lfp_ephys_data = intan_ephys_to_lfp_dict(intan_data)
     time = lfp_ephys_data['time']
-    egf_time = down_sample_timeseries(time, intan_sample_rate, 4.8e3)
-    eeg_time = down_sample_timeseries(time, 4.8e3, 250.0)
     duration = time[-1] - time[0]
 
     efg_header = intan_to_lfp_header_dict(intan_data, True)
@@ -48,13 +47,7 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
             egf_ephys_data = egf_ephys_data.astype(np.int16)
 
 
-
-            try:
-                assert len(egf_ephys_data) == len(egf_time)
-            except:
-                raise AssertionError("len(egf_ephys_data) ({}) == len(egf_time) ({}). Values must be equal for write_egf_file.".format(len(egf_ephys_data), len(egf_time)))
-
-            write_egf_file(egf_ephys_data, egf_time, efg_header, channel, session_name, output_dir)
+            write_eeg_or_egf_file(egf_ephys_data, duration, efg_header, channel, session_name, output_dir, is_egf=True)
 
 
             # EEG
@@ -71,24 +64,18 @@ def create_eeg_and_egf_files(intan_data: dict, session_name: str, output_dir: st
             eeg_ephys_data = eeg_ephys_data.astype(np.int8)
 
 
-            try:
-                assert len(eeg_ephys_data) == len(eeg_time)
-            except:
-                raise AssertionError("len(eeg_ephys_data) ({}) == len(eeg_time) ({}). These values must be equal for write_eeg_file function.".format(len(eeg_ephys_data), len(eeg_time)))
-
-            write_eeg_file(eeg_ephys_data, eeg_time, eeg_header, channel, session_name, output_dir)
+            write_eeg_or_egf_file(eeg_ephys_data, duration, eeg_header, channel, session_name, output_dir, is_egf=False)
 
 
 
-
-def write_eeg_file(eeg_single_unit_data, eeg_time,eeg_header_dict, channel_name, session_name, output_dir):
+def write_eeg_or_egf_file(lfp_single_unit_data, duration,lfp_header_dict, channel_name, session_name, output_dir, is_egf=False):
     """Writes a single channel of eeg data to a .eeg file.
 
     Parameters
-        eeg_single_unit_data : numpy.array
+        lfp_single_unit_data : numpy.array
             The data to be written to the .eeg file.
-        eeg_time : numpy.array
-            The time array for the data.
+        duration : float
+            The duration of the data in seconds.
         eeg_header_dict : dict
             The header dictionary for the .eeg file.
         channel_name : str
@@ -103,44 +90,50 @@ def write_eeg_file(eeg_single_unit_data, eeg_time,eeg_header_dict, channel_name,
             (Writes a .eeg file to the output directory without returning an output.)
     """
 
-    eeg_filepath = os.path.join(output_dir, session_name + '.eeg'+'{}'.format(channel_name[-3:]))
+    if is_egf:
+        filepath = os.path.join(output_dir, session_name + '.egf{}'.format(channel_name[-3:]))
+    else:
+        filepath = os.path.join(output_dir, session_name + '.eeg{}'.format(channel_name[-3:]))
 
-    with open(eeg_filepath, 'w') as f:
-        header = "\nThis is where the Set File Header would go... Let's see what happens if we leave it out."
+
+    with open(filepath, 'w') as f:
+        header = "\nThis data set was created by the hfoGUI software."
 
         num_chans = '\nnum_chans 1'
 
-        num_samples = len(eeg_single_unit_data)
+        num_samples = len(lfp_single_unit_data)
 
-        eeg_sample_rate = '\nsample_rate 250 Hz'
+        if is_egf:
+            sample_rate = '\nsample_rate 4.8e3'
+            b_p_sample = '\nbytes_per_sample 2'
+        else:
+            sample_rate = '\nsample_rate 250 Hz'
+            b_p_sample = '\nbytes_per_sample 1'
 
-        b_p_sample = '\nbytes_per_sample 2'
-        num_EEG_samples = '\nnum_EGF_samples %d' % (num_samples)
+        num_samples_line = '\nnum_samples %d' % (num_samples)
 
-        eeg_p_position = '\nEEG_samples_per_position %d' % (5)
+        p_position = '\nsamples_per_position %d' % (5)
 
-        duration = '\nduration %.3f' % (eeg_time[-1] - eeg_time[0])
+        duration = '\nduration %.3f' % (duration)
 
         start = '\ndata_start'
 
-        write_order = [header, num_chans, eeg_sample_rate, eeg_p_position, b_p_sample, num_EEG_samples, start]
+        write_order = [header, num_chans,sample_rate, p_position, b_p_sample, num_samples_line, start]
 
         # write the header to the file
         f.writelines(write_order)
 
     # write the data to the file
-    data = struct.pack('<%dh' % (num_samples), *[np.int(data_value) for data_value in eeg_single_unit_data.tolist()])
+    if is_egf:
+        data = struct.pack('<%dh' % (num_samples), *[np.int16(data_value) for data_value in lfp_single_unit_data.tolist()])
+    else:
+        data = struct.pack('<%dh' % (num_samples), *[np.int8(data_value) for data_value in lfp_single_unit_data.tolist()])
 
-    with open(eeg_filepath, 'rb+') as f:
+
+    with open(filepath, 'rb+') as f:
         f.seek(0, 2)
         f.writelines([data, bytes('\r\ndata_end\r\n', 'utf-8')])
 
-
-def write_egf_file(egf_single_unit_data, efg_time, egf_header_dict, channel_name, session_name, output_dir):
-
-    eeg_filepath = os.path.join(output_dir, session_name + '_' + channel_name + '.egf')
-
-    pass
 
 
 def intan_to_lfp_dicts(intan_data: dict) -> dict:
@@ -241,7 +234,6 @@ def down_sample_timeseries(data: np.ndarray, sample_rate: float, new_sample_rate
 
 
 
-
 def fir_hann(data, Fs, cutoff, n_taps=101, showresponse=0):
 
     # The Nyquist rate of the signal.
@@ -273,7 +265,7 @@ def fir_hann(data, Fs, cutoff, n_taps=101, showresponse=0):
 
     return data, n_taps
 
-
+"""
 def notch_filt(data, Fs, band=10, freq=60, ripple=1, order=2, filter_type='butter', analog_filt=False,
                showresponse=0):
     '''# Required input defintions are as follows;
@@ -502,6 +494,7 @@ def get_a_b(bandtype, Fs, Wp, Ws, order=3, Rp=3, As=60, analog_val=False, filtty
                 b, a = scipy.signal.iirfilter(order, [Wp, Ws], btype=bandtype, analog=analog_val, ftype=filttype)
 
     return b, a
+"""
 
 def get_set_header(set_filename):
     with open(set_filename, 'r+') as f:
@@ -511,8 +504,6 @@ def get_set_header(set_filename):
             if 'sw_version' in line:
                 break
     return header
-
-
 
 
 def write_faux_set_file(intan_header_dict, session_name, output_dir, duration):
@@ -563,9 +554,6 @@ def get_set_header(set_filename):
             if 'sw_version' in line:
                 break
     return header
-
-
-
 
 def intan_scalar():
     """returns the scalar value that can be element-wise multiplied to the data

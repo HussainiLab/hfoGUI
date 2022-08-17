@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 
 base_dir = os.getcwd().replace('\\','/')
-#intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
-intan_data = read_rhd_data("K:/ke/sta/data/cumc/intan_sample/b6_august_18_1_1100_plgt_190422_112734.rhd")
+intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+#intan_data = read_rhd_data("K:/ke/sta/data/cumc/intan_sample/b6_august_18_1_1100_plgt_190422_112734.rhd")
 
 def test_good_base_directory():
     """
@@ -26,7 +26,7 @@ def test_good_base_directory():
 
 def test_create_eeg_and_egf_files():
     #create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs/')
-    create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs2/')
+    create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs/')
 
 
 def test_read_rhd_data():

@@ -859,7 +859,6 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
             # define each of the variables of the graph
             for option, option_index in option_tree_locations.items():
-                # print(option)
                 if 'Source' in option:
                     graph_source = graph_item.data(option_index, 0)
 

@@ -611,7 +611,7 @@ def bits2uV(data, data_fpath, set_fpath=''):
             chan_num = 1
         else:
             chan_num = int(ext[len('.egf'):])
-        print(chan_num)
+        #print(chan_num)
 
         for index, value in enumerate(eeg_chan_map[:]):
             if value[0] == chan_num:
