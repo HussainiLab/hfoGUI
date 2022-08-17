@@ -624,7 +624,7 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     except PermissionError:
         return
 
-    eeg_files = [file for file in directory_file_list if (set_basename in file)and ('.eeg' in file or set_basename+'.egf' in file)]
+    eeg_files = [file for file in directory_file_list if (set_basename in file)and ('.eeg' in file or '.egf' in file)]
     lfp_files = []
     main_window.active_tetrodes = []
 

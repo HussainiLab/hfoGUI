@@ -537,7 +537,6 @@ def findCenter(NE, NW, SW, SE):
 
 def bits2uV(data, data_fpath, set_fpath=''):
     '''
-
     :param data:
     :param data_fpath: example: 'C:\example\filepath.whatever'
     :param set_fpath:
@@ -585,7 +584,6 @@ def bits2uV(data, data_fpath, set_fpath=''):
                     eeg_chan_map = np.array([int(line[len('EEG_ch_'):line.find(" ")]), int(line.split(" ")[1])], ndmin=2)
                 else:
                     eeg_chan_map = np.append(eeg_chan_map, np.array([int(line[len('EEG_ch_'):line.find(" ")]), int(line.split(" ")[1])], ndmin=2), axis=0)
-
     if '.eeg' in ext:
         if len(ext) == len('.eeg'):
             chan_num = 1
@@ -613,6 +611,7 @@ def bits2uV(data, data_fpath, set_fpath=''):
             chan_num = 1
         else:
             chan_num = int(ext[len('.egf'):])
+        print(chan_num)
 
         for index, value in enumerate(eeg_chan_map[:]):
             if value[0] == chan_num:

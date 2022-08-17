@@ -6,6 +6,7 @@ from .Intan_to_Tint import (
     ,intan_ephys_to_lfp_dict
     ,intan_to_lfp_header_dict
     ,down_sample_timeseries
+    ,intan_scalar
 )
 
 import os
@@ -13,7 +14,8 @@ import numpy as np
 import pytest
 
 base_dir = os.getcwd().replace('\\','/')
-intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+#intan_data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
+intan_data = read_rhd_data("K:/ke/sta/data/cumc/intan_sample/b6_august_18_1_1100_plgt_190422_112734.rhd")
 
 def test_good_base_directory():
     """
@@ -23,7 +25,8 @@ def test_good_base_directory():
     assert base_dir == "K:/ke/ops/cumc/repos/hfoGUI"
 
 def test_create_eeg_and_egf_files():
-    create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs')
+    #create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs/')
+    create_eeg_and_egf_files(intan_data, 'test_session', base_dir + '/test_outputs2/')
 
 
 def test_read_rhd_data():
@@ -34,25 +37,25 @@ def test_read_rhd_data():
 
     #data = read_rhd_data(base_dir + '/hfoGUI/core/load_intan_rhd_format/sampledata.rhd')
 
-    data_path = "K:/ke/sta/data/cumc/INTAN_TEST/RADHA_MOUSE_AJ_950um_AQ_950um_220411_142605.rhd"
+    #data_path = "K:/ke/sta/data/cumc/INTAN_TEST/RADHA_MOUSE_AJ_950um_AQ_950um_220411_142605.rhd"
 
-    data = read_rhd_data(data_path)
+    #intan_data = read_rhd_data(data_path)
 
-    #for i in range(len(data["amplifier_data"])):
-    #    print(data["amplifier_channels"][i]["custom_channel_name"])
-    #    print(data["amplifier_data"][i])
+    #for i in range(len(intan_data["amplifier_data"])):
+        #print(intan_data["amplifier_channels"][i]["custom_channel_name"])
+        #print(intan_data["amplifier_channels"][i])
 
 
-    #for header in data:
+    #for header in intan_data:
     #    print(header)
-    #    print(data[header], "\n\n")
+    #    print(intan_data[header], "\n\n")
 
     #Check the types of the data we will use.
-    assert type(data) == dict
-    assert type(data['t_amplifier']) == np.ndarray
-    assert type(data['amplifier_data']) == np.ndarray
-    assert type(data['spike_triggers']) == list
-    for channel in data['spike_triggers']:
+    assert type(intan_data) == dict
+    assert type(intan_data['t_amplifier']) == np.ndarray
+    assert type(intan_data['amplifier_data']) == np.ndarray
+    assert type(intan_data['spike_triggers']) == list
+    for channel in intan_data['spike_triggers']:
         assert type(channel) == dict
 
 def test_intan_to_lfp_dicts():
