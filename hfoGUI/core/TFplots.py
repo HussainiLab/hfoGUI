@@ -1,5 +1,6 @@
 from core.TFA_Functions import stran_psd
 from scipy.signal import hilbert
+from scipy.interpolate import RectBivariateSpline
 from core.GUI_Utils import Worker, CustomViewBox, background
 import os
 import numpy as np
@@ -271,7 +272,7 @@ class TFPlotWindow(QtWidgets.QWidget):
             if self.source_filename not in self.settingsWindow.loaded_sources:
                 return
 
-            if self.raw_data == []:
+            if isinstance(self.raw_data, list) or (hasattr(self.raw_data, 'size') and self.raw_data.size == 0):
                 self.raw_data, self.Fs = self.settingsWindow.loaded_sources[self.source_filename]
 
             # filter the 60 Hz of the raw data
@@ -290,7 +291,7 @@ class TFPlotWindow(QtWidgets.QWidget):
                 self.low_frequency.setText(str(self.lower_cutoff))
 
             # filter the data if it is not already filtered
-            if self.filtered_data == []:
+            if isinstance(self.filtered_data, list) or (hasattr(self.filtered_data, 'size') and self.filtered_data.size == 0):
 
                 if self.lower_cutoff != 0 and self.upper_cutoff != self.Fs/2:
                     self.filtered_data = filt.iirfilt(bandtype='band', data=self.raw_data, Fs=self.Fs,
@@ -540,22 +541,22 @@ class TFPlotWindow(QtWidgets.QWidget):
 
         elif source == 'Raw':
             # update the raw graph (top graph)
-            self.RawGraphAxis.plot(x, y, clear=True, pen=(0, 0, 255), width=3)
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(0, 0, 0))
+            self.RawGraphAxis.plot(x/1000, y, clear=True, pen=(0, 0, 255), width=3)
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(0, 0, 0))
             self.RawGraphAxis.addItem(vLine,  ignoreBounds=True)
-            self.RawGraphAxis.setXRange(np.amin(x), np.amax(x), padding=0)
+            self.RawGraphAxis.setXRange(np.amin(x)/1000, np.amax(x)/1000, padding=0)
             self.RawGraphAxis.setLabel('left', "Amplitude", units='uV')
-            self.RawGraphAxis.setLabel('bottom', "Time", units='ms')
+            self.RawGraphAxis.setLabel('bottom', "Time", units='s')
 
         elif source == 'Filtered':
             # update the filtered graph (middle graph)
-            self.FilteredGraphAxis.plot(x, y[0, :], clear=True, pen=(0, 0, 255), width=3)  # plotting filtered data
-            self.FilteredGraphAxis.plot(x, y[1, :], pen=(255, 0, 0), width=3)  # plotting the hilbert transform
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(0, 0, 0))
+            self.FilteredGraphAxis.plot(x/1000, y[0, :], clear=True, pen=(0, 0, 255), width=3)  # plotting filtered data
+            self.FilteredGraphAxis.plot(x/1000, y[1, :], pen=(255, 0, 0), width=3)  # plotting the hilbert transform
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(0, 0, 0))
             self.FilteredGraphAxis.addItem(vLine, ignoreBounds=True)
-            self.FilteredGraphAxis.setXRange(np.amin(x), np.amax(x), padding=0)
+            self.FilteredGraphAxis.setXRange(np.amin(x)/1000, np.amax(x)/1000, padding=0)
             self.FilteredGraphAxis.setLabel('left', "Amplitude", units='uV')
-            self.FilteredGraphAxis.setLabel('bottom', "Time", units='ms')
+            self.FilteredGraphAxis.setLabel('bottom', "Time", units='s')
 
         elif source == 'T-F':
             # update the time frequency graph (bottom graph)
@@ -565,10 +566,11 @@ class TFPlotWindow(QtWidgets.QWidget):
             # if '.eeg' in self.source_filename:
             # interpolation will allow the graph to look less pixelated
 
-            f = interpolate.interp2d(x, freq, power, kind='linear')
-            x_new = np.linspace(x[0], x[-1], num=10e2)
-            y_new = np.linspace(freq[0], freq[-1], num=10e2)
-            power = f(x_new, y_new)
+            # Use RectBivariateSpline instead of removed interp2d
+            f = RectBivariateSpline(freq, x, power, kx=1, ky=1)
+            x_new = np.linspace(x[0], x[-1], num=int(10e2))
+            y_new = np.linspace(freq[0], freq[-1], num=int(10e2))
+            power = f(y_new, x_new)
 
             # colormap = cm.get_cmap("jet")  # cm.get_cmap("CMRmap")
             # colormap._init()
@@ -579,15 +581,15 @@ class TFPlotWindow(QtWidgets.QWidget):
             # hm.setLookupTable(lut)
             self.STransformGraphAxis.addItem(hm)
 
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(255, 255, 255))
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(255, 255, 255))
             vLine.setPen(style=QtCore.Qt.DashLine)
-            hm.setRect(QtCore.QRectF(np.amin(x), np.amin(freq), np.amax(x)-np.amin(x), np.amax(freq)-np.amin(freq)))
+            hm.setRect(QtCore.QRectF(np.amin(x)/1000, np.amin(freq), (np.amax(x)-np.amin(x))/1000, np.amax(freq)-np.amin(freq)))
 
             self.STransformGraphAxis.addItem(vLine)
-            self.STransformGraphAxis.setXRange(np.amin(x), np.amax(x), padding=0)
+            self.STransformGraphAxis.setXRange(np.amin(x)/1000, np.amax(x)/1000, padding=0)
             self.STransformGraphAxis.setYRange(np.amin(freq), np.amax(freq), padding=0)
             self.STransformGraphAxis.setLabel('left', "Frequency", units='Hz')
-            self.STransformGraphAxis.setLabel('bottom', "Time", units='ms')
+            self.STransformGraphAxis.setLabel('bottom', "Time", units='s')
 
 
 def plot(self):
