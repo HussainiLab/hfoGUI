@@ -29,7 +29,27 @@ def background(self):  # defines the background for each window
     self.deskW, self.deskH = QtWidgets.QDesktopWidget().availableGeometry().getRect()[2:] #gets the window resolution
     self.setGeometry(0, 0, int(self.deskW/2), int(self.deskH/1.5))  # Sets the window size, 800x460 is the size of our window
 
-    QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create('Cleanlooks'))
+    QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create('Fusion'))
+
+    app = QtWidgets.QApplication.instance()
+    if app and not getattr(app, "_custom_palette_applied", False):
+        palette = QtGui.QPalette()
+        palette.setColor(QtGui.QPalette.Window, QtGui.QColor(240, 240, 240))
+        palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor(25, 25, 25))
+        palette.setColor(QtGui.QPalette.Base, QtGui.QColor(255, 255, 255))
+        palette.setColor(QtGui.QPalette.AlternateBase, QtGui.QColor(230, 230, 230))
+        palette.setColor(QtGui.QPalette.ToolTipBase, QtGui.QColor(245, 245, 245))
+        palette.setColor(QtGui.QPalette.ToolTipText, QtGui.QColor(30, 30, 30))
+        palette.setColor(QtGui.QPalette.Text, QtGui.QColor(25, 25, 25))
+        palette.setColor(QtGui.QPalette.Button, QtGui.QColor(245, 245, 245))
+        palette.setColor(QtGui.QPalette.ButtonText, QtGui.QColor(20, 20, 20))
+        palette.setColor(QtGui.QPalette.BrightText, QtCore.Qt.red)
+        palette.setColor(QtGui.QPalette.Link, QtGui.QColor(0, 122, 204))
+        palette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(0, 120, 215))
+        palette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.white)
+        app.setPalette(palette)
+        app.setStyleSheet("QToolTip { color: #202020; background-color: #f5f5f5; border: 1px solid #cccccc; }")
+        app._custom_palette_applied = True
 
 
 class Worker(QtCore.QObject):

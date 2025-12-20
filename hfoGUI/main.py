@@ -11,7 +11,7 @@ from core.Score import ScoreWindow
 from core.TFplots import TFPlotWindow
 from core.ChooseFile import ChooseFile, new_File
 
-version = "2.0"
+version = "3.0"
 
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
@@ -22,20 +22,16 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         super(Window, self).__init__()
         background(self)  # acquires some features from the background function we defined earlier
 
-        pg.setConfigOption('background', 'w')
-        pg.setConfigOption('foreground', 'k')
+        pg.setConfigOption('background', '#f0f0f0')
+        pg.setConfigOption('foreground', '#202020')
 
         if getattr(sys, 'frozen', False):
             # frozen
-            self.setWindowTitle(
-                os.path.splitext(os.path.basename(sys.executable))[
-                    0] + " - Main Window")  # sets the title of the window
+            self.setWindowTitle("hfoGUI - main window")
 
         else:
             # unfrozen
-            self.setWindowTitle(
-                os.path.splitext(os.path.basename(__file__))[
-                    0] + " - Main Window")  # sets the title of the window
+            self.setWindowTitle("hfoGUI - main window")
 
         self.ErrorDialogue = Communicate()
         self.ErrorDialogue.myGUI_signal.connect(self.PopUpMessage)
@@ -85,7 +81,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         # ------------- grid layout ------------------------
 
         self.main_window_parameters = [
-            'Import Set', 'Set Filename:', '', '', '', '', '',
+            'Import Set', 'Intan Convert', 'Set Filename:', '', '', '', '',
         ]
 
         self.main_window_fields = {}
@@ -100,7 +96,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 continue
             else:
                 self.main_window_field_positions[parameter] = (i, j)
-                if 'Import' in parameter:
+                if 'Import' in parameter or 'Intan' in parameter:
                     self.main_window_fields[i, j] = QtWidgets.QPushButton(parameter, self)
                     self.main_window_layout.addWidget(self.main_window_fields[i, j], *(i, j))
 
@@ -118,6 +114,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         # ------------------- setting the graph -----------------------
         self.GraphLoaded = False
+        self.source_duration = 0.0  # Initialize source duration for mouse hover display
         self.graphics_window = pg.GraphicsLayoutWidget()
 
         self.Graph_label = pg.LabelItem(justify='right')  # adds the Label that will be used for mouse interactions
@@ -229,7 +226,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             mousePoint = self.vb.mapSceneToView(pos)
             index = int(mousePoint.x())
 
-            if index > 0:
+            if index > 0 and self.source_duration is not None and self.source_duration > 0:
                 self.Graph_label.setText(
                     "<span style='font-size: 12pt'>Time=%0.3f s, Total Duration: %0.1f s" % (
                     mousePoint.x(), self.source_duration))
@@ -649,6 +646,19 @@ def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
     tf_plots_window.clearPlots()
 
 
+def run_intan_converter():
+    """Run the Intan RHD to Tint format converter script"""
+    try:
+        # Get the directory where intan_rhd_format.py is located (same directory as main.py)
+        script_path = os.path.join(os.path.dirname(__file__), 'intan_rhd_format.py')
+        
+        # Run the script in a subprocess
+        import subprocess
+        subprocess.Popen([sys.executable, script_path])
+    except Exception as e:
+        print(f"Error running Intan converter: {e}")
+
+
 def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     """Updates the fields of the graph options window when the .set file changes"""
     if hasattr(main_window, 'scrollbar_thread'):
@@ -790,6 +800,8 @@ def run():
     for key, val in main_w.main_window_field_positions.items():
         if 'Import Set' in key:
             i_set_btn, j_set_btn = val
+        elif 'Intan Convert' in key:
+            i_intan_btn, j_intan_btn = val
         elif 'Filename' in key:
             i_set_text, j_set_text = val
 
@@ -816,6 +828,7 @@ def run():
     main_w.score_btn.clicked.connect(lambda: raise_w(score_w, main_w))
     main_w.graph_settings_btn.clicked.connect(lambda: raise_w(setting_w, main_w))
     main_w.main_window_fields[i_set_btn, j_set_btn].clicked.connect(lambda: raise_w(chooseSet, main_w, source='Set'))
+    main_w.main_window_fields[i_intan_btn, j_intan_btn].clicked.connect(run_intan_converter)
     main_w.graph_parameter_fields[i_plot, j_plot+1].stateChanged.connect(lambda: plotCheckChanged(main_w, setting_w))
 
     chooseSet.choosebtn.clicked.connect(lambda: new_File(chooseSet, main_w, "Set"))

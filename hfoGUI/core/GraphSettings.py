@@ -1259,6 +1259,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
         Fs = self.source_values[self.source_index][1]
         self.mainWindow.SourceFs = Fs
+        self.mainWindow.source_duration = self.mainWindow.SourceLength / Fs  # Update source duration for mouse hover
         self.mainWindow.GraphLoaded = True
 
         # --- set the mins and maxs of the scrollbar -----

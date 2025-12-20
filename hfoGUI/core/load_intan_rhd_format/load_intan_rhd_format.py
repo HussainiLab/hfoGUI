@@ -59,11 +59,12 @@ def read_rhd_data(filename):
         else:
             data['t_amplifier'] = np.zeros(num_amplifier_samples, dtype=np.uint)
 
-        data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], num_amplifier_samples], dtype=np.uint)
-        data['aux_input_data'] = np.zeros([header['num_aux_input_channels'], num_aux_input_samples], dtype=np.uint)
-        data['supply_voltage_data'] = np.zeros([header['num_supply_voltage_channels'], num_supply_voltage_samples], dtype=np.uint)
-        data['temp_sensor_data'] = np.zeros([header['num_temp_sensor_channels'], num_supply_voltage_samples], dtype=np.uint)
-        data['board_adc_data'] = np.zeros([header['num_board_adc_channels'], num_board_adc_samples], dtype=np.uint)
+        # Use 16-bit unsigned ints for raw buffers to reduce memory footprint
+        data['amplifier_data'] = np.zeros([header['num_amplifier_channels'], num_amplifier_samples], dtype=np.uint16)
+        data['aux_input_data'] = np.zeros([header['num_aux_input_channels'], num_aux_input_samples], dtype=np.uint16)
+        data['supply_voltage_data'] = np.zeros([header['num_supply_voltage_channels'], num_supply_voltage_samples], dtype=np.uint16)
+        data['temp_sensor_data'] = np.zeros([header['num_temp_sensor_channels'], num_supply_voltage_samples], dtype=np.uint16)
+        data['board_adc_data'] = np.zeros([header['num_board_adc_channels'], num_board_adc_samples], dtype=np.uint16)
 
         # by default, this script interprets digital events (digital inputs and outputs) as booleans
         # if unsigned int values are preferred(0 for False, 1 for True), replace the 'dtype=bool' argument with 'dtype=np.uint' as shown
@@ -71,10 +72,10 @@ def read_rhd_data(filename):
 
         #data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=np.uint)
         data['board_dig_in_data'] = np.zeros([header['num_board_dig_in_channels'], num_board_dig_in_samples], dtype=bool)
-        data['board_dig_in_raw'] = np.zeros(num_board_dig_in_samples, dtype=np.uint)
+        data['board_dig_in_raw'] = np.zeros(num_board_dig_in_samples, dtype=np.uint16)
 
         data['board_dig_out_data'] = np.zeros([header['num_board_dig_out_channels'], num_board_dig_out_samples], dtype=bool)
-        data['board_dig_out_raw'] = np.zeros(num_board_dig_out_samples, dtype=np.uint)
+        data['board_dig_out_raw'] = np.zeros(num_board_dig_out_samples, dtype=np.uint16)
 
 
         # Initialize indices used in looping
@@ -122,16 +123,17 @@ def read_rhd_data(filename):
             data['board_dig_out_data'][i, :] = np.not_equal(np.bitwise_and(data['board_dig_out_raw'], (1 << header['board_dig_out_channels'][i]['native_order'])), 0)
 
         # Scale voltage levels appropriately.
-        data['amplifier_data'] = np.multiply(0.195, (data['amplifier_data'].astype(int) - 32768))      # units = microvolts
-        data['aux_input_data'] = np.multiply(37.4e-6, data['aux_input_data'])               # units = volts
-        data['supply_voltage_data'] = np.multiply(74.8e-6, data['supply_voltage_data'])     # units = volts
+        # Scale to float32 to reduce memory versus default float64
+        data['amplifier_data'] = (data['amplifier_data'].astype(np.int32) - 32768).astype(np.float32) * np.float32(0.195)      # microvolts
+        data['aux_input_data'] = data['aux_input_data'].astype(np.float32) * np.float32(37.4e-6)               # volts
+        data['supply_voltage_data'] = data['supply_voltage_data'].astype(np.float32) * np.float32(74.8e-6)     # volts
         if header['eval_board_mode'] == 1:
-            data['board_adc_data'] = np.multiply(152.59e-6, (data['board_adc_data'].astype(int) - 32768)) # units = volts
+            data['board_adc_data'] = (data['board_adc_data'].astype(np.int32) - 32768).astype(np.float32) * np.float32(152.59e-6) # volts
         elif header['eval_board_mode'] == 13:
-            data['board_adc_data'] = np.multiply(312.5e-6, (data['board_adc_data'].astype(int) - 32768)) # units = volts
+            data['board_adc_data'] = (data['board_adc_data'].astype(np.int32) - 32768).astype(np.float32) * np.float32(312.5e-6) # volts
         else:
-            data['board_adc_data'] = np.multiply(50.354e-6, data['board_adc_data'])           # units = volts
-        data['temp_sensor_data'] = np.multiply(0.01, data['temp_sensor_data'])               # units = deg C
+            data['board_adc_data'] = data['board_adc_data'].astype(np.float32) * np.float32(50.354e-6)           # volts
+        data['temp_sensor_data'] = data['temp_sensor_data'].astype(np.float32) * np.float32(0.01)               # deg C
 
         # Check for gaps in timestamps.
         num_gaps = np.sum(np.not_equal(data['t_amplifier'][1:]-data['t_amplifier'][:-1], 1))
