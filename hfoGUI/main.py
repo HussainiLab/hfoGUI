@@ -362,12 +362,14 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
     def get_scroll_values(self):
         try:
             self.current_time = float(self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].text())
-        except ValueError:
+        except (ValueError, RuntimeError):
+            # ValueError: invalid text conversion, RuntimeError: widget deleted during shutdown
             self.current_time = None
 
         try:
             self.windowsize = float(self.graph_parameter_fields[self.i_windowsize, self.j_windowsize + 1].text())
-        except ValueError:
+        except (ValueError, RuntimeError):
+            # ValueError: invalid text conversion, RuntimeError: widget deleted during shutdown
             self.windowsize = None
 
     def get_current_time(self):
@@ -612,7 +614,13 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             pass
 
     def closeEvent(self, event):
-        """Override close event to save settings"""
+        """Override close event to save settings and stop worker threads"""
+        # Stop the scrollbar worker thread to prevent accessing deleted widgets
+        self.GraphLoaded = False
+        if hasattr(self, 'scrollbar_thread') and self.scrollbar_thread.isRunning():
+            self.scrollbar_thread.quit()
+            self.scrollbar_thread.wait(1000)  # Wait up to 1 second for thread to finish
+        
         self._save_last_set_file()
         super().closeEvent(event)
 

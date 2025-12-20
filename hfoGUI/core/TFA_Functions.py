@@ -329,7 +329,9 @@ def stran_psd(h, Fs, minfreq=0, maxfreq=600, output_Fs=1):
     power = np.abs(ST)
 
     # normalize phase estimates to one length
-    nST = np.divide(ST, power)
+    # Add small epsilon to avoid division by zero
+    epsilon = np.finfo(float).eps
+    nST = np.divide(ST, power + epsilon)
     phase = np.angle(nST)
 
     return power, phase, f

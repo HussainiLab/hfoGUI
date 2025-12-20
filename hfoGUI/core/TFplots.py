@@ -422,7 +422,9 @@ class TFPlotWindow(QtWidgets.QWidget):
 
             PSD = power[:, int(np.fix(power.shape[1] / 2))]
             PSD = np.absolute(PSD)**2  # need to square the magnitude to get power spectral density
-            PSDlog10 = np.multiply(np.log10(PSD), 10)
+            # Add small epsilon to avoid log10(0) and handle invalid values
+            epsilon = np.finfo(float).eps
+            PSDlog10 = np.multiply(np.log10(PSD + epsilon), 10)
 
             self.newData.mysignal.emit('PSD', f, PSD)
             self.newData.mysignal.emit('PSDLog', f, PSDlog10)

@@ -122,12 +122,16 @@ def get_setfile_parameter(parameter, set_filename):
                         return ' '.join(new_line[1:])
 
 
-def getpos(pos_fpath, arena, method='', flip_y=True):
+def getpos(pos_fpath, arena, method='', flip_y=True, custom_ppm=None):
     """
     getpos function:
     ---------------------------------------------
     variables:
     -pos_fpath: the full path (C:\example\session.pos)
+    -arena: the arena name
+    -method: optional method parameter
+    -flip_y: whether to flip y coordinates (default True)
+    -custom_ppm: custom pixels per meter value (overrides arena defaults and file ppm)
 
     output:
     t: column numpy array of the time stamps
@@ -223,7 +227,10 @@ def getpos(pos_fpath, arena, method='', flip_y=True):
 
         t = t - t[0]
 
-        x, y = arena_config(x, y, arena, conversion=ppm, center=np.asarray([np.mean([np.amin(x), np.amax(x)]),
+        # Use custom_ppm if provided, otherwise use ppm from file
+        conversion_ppm = custom_ppm if custom_ppm is not None else ppm
+
+        x, y = arena_config(x, y, arena, conversion=conversion_ppm, center=np.asarray([np.mean([np.amin(x), np.amax(x)]),
                                                                             np.mean([np.amin(y), np.amax(y)])]),
                             flip_y=flip_y)
 

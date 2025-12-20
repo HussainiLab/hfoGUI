@@ -89,7 +89,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                                      'Source:', '', 'Filter Method:', '', 'Filter Type:', '',
                                      'Filter Order', '', 'Lower Cutoff (Hz):', '', 'Upper Cutoff (Hz):', '',
                                      'Notch Filter (Hz):', '', 'Mark Peaks', '', 'Gain (V/V):', '',
-                                     'Arena:', '', 'Hilbert:', '', '', '']
+                                     'Arena:', '', 'PPM (pixels/meter):', '', 'Hilbert:', '', '', '']
 
         self.graph_header_option_fields = {}
         self.graph_header_option_positions = {}
@@ -202,6 +202,22 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                     gain_layout.addWidget(self.graph_header_option_fields[i, j])
                     gain_layout.addWidget(self.graph_header_option_fields[i, j + 1])
                     self.graph_header_option_layout.addLayout(gain_layout, *(i, j))
+
+                elif 'PPM' in parameter:
+
+                    self.graph_header_option_fields[i, j] = QtWidgets.QLabel(parameter)
+                    self.graph_header_option_fields[i, j].setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+                    self.graph_header_option_fields[i, j + 1] = QtWidgets.QLineEdit()
+                    self.graph_header_option_fields[i, j + 1].setText('')
+                    self.graph_header_option_fields[i, j + 1].setPlaceholderText('Auto')
+                    self.graph_header_option_fields[i, j + 1].setAlignment(
+                        QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+
+                    ppm_layout = QtWidgets.QHBoxLayout()
+                    ppm_layout.addWidget(self.graph_header_option_fields[i, j])
+                    ppm_layout.addWidget(self.graph_header_option_fields[i, j + 1])
+                    self.graph_header_option_layout.addLayout(ppm_layout, *(i, j))
 
                 elif 'Save' in parameter:
                     self.save_profile_btn = QtWidgets.QPushButton('Save Profile')
@@ -728,7 +744,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         else:
                             value = 'N/A'
                     else:
-                        speed_parameters = ['Source:', 'Arena:', 'Gain (V/V):', 'Hilbert']
+                        speed_parameters = ['Source:', 'Arena:', 'PPM (pixels/meter):', 'Gain (V/V):', 'Hilbert']
                         if any(option in x for x in speed_parameters):
                             if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                 # then the object is a combobox
@@ -885,6 +901,15 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
                 elif 'Arena' in option:
                     arena = graph_item.data(option_index, 0)
+                elif 'PPM' in option:
+                    custom_ppm = graph_item.data(option_index, 0)
+                    if custom_ppm and custom_ppm.strip():
+                        try:
+                            custom_ppm = float(custom_ppm)
+                        except ValueError:
+                            custom_ppm = None
+                    else:
+                        custom_ppm = None
 
                 elif 'Lower' in option:
                     lower_cutoff = graph_item.data(option_index, 0)
@@ -1025,7 +1050,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
             elif '.pos' in source_filename:
                 if source_filename not in self.loaded_sources.keys():
-                    posx, posy, post, Fs_pos = getpos(source_filename, arena)
+                    posx, posy, post, Fs_pos = getpos(source_filename, arena, custom_ppm=custom_ppm)
 
                     # centering the positions
                     center = centerBox(posx, posy)
@@ -1351,7 +1376,7 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             else:
                                 value = 'N/A'
                         else:
-                            speed_parameters = ['Source:', 'Arena:', 'Gain (V/V):', 'Hilbert']
+                            speed_parameters = ['Source:', 'Arena:', 'PPM (pixels/meter):', 'Gain (V/V):', 'Hilbert']
                             if any(option in x for x in speed_parameters):
                                 if 'Combo' in str(self.graph_header_option_fields[i, j + 1]):
                                     # then the object is a combobox
