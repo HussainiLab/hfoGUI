@@ -188,11 +188,11 @@ class ScoreWindow(QtWidgets.QWidget):
         eoi_filename_layout.addWidget(eoi_filename_label)
         eoi_filename_layout.addWidget(self.eoi_filename)
 
-        self.save_eoi_btn = QtWidgets.QPushButton("Save EOI's")
+        self.save_eoi_btn = QtWidgets.QPushButton("Save EOIs")
         self.save_eoi_btn.clicked.connect(self.saveAutomaticEOIs)
         eoi_button_layout = QtWidgets.QHBoxLayout()
 
-        self.load_eois = QtWidgets.QPushButton("Load EOI's")
+        self.load_eois = QtWidgets.QPushButton("Load EOIs")
         self.load_eois.clicked.connect(self.loadAutomaticEOIs)
 
         eoi_button_layout.addWidget(self.load_eois)
@@ -258,7 +258,7 @@ class ScoreWindow(QtWidgets.QWidget):
         self.update_eoi_region.clicked.connect(self.updateEOIRegion)
 
         self.eoi_hide = QtWidgets.QPushButton("Hide")
-        self.find_eoi_btn = QtWidgets.QPushButton("Find EOI's")
+        self.find_eoi_btn = QtWidgets.QPushButton("Find EOIs")
         self.find_eoi_btn.clicked.connect(self.findEOIs)
         self.delete_eoi_btn = QtWidgets.QPushButton("Remove Selected EOI")
         self.delete_eoi_btn.clicked.connect(self.deleteEOI)
@@ -1485,6 +1485,9 @@ class HilbertParametersWindow(QtWidgets.QWidget):
                 parameter_layout.addWidget(self.hilbert_fields[i, j + 1])
                 hilbert_parameter_layout.addLayout(parameter_layout, *(i, j))
 
+        # Load saved parameters after all fields are created
+        self._load_hilbert_params()
+
         window_layout = QtWidgets.QVBoxLayout()
 
         Title = QtWidgets.QLabel("Automatic Detection - Hilbert")
@@ -1499,9 +1502,12 @@ class HilbertParametersWindow(QtWidgets.QWidget):
         self.cancel_btn = QtWidgets.QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.close_app)
 
+        self.reset_btn = QtWidgets.QPushButton("Reset to Defaults")
+        self.reset_btn.clicked.connect(self.reset_to_defaults)
+
         button_layout = QtWidgets.QHBoxLayout()
 
-        for button in [self.analyze_btn, self.cancel_btn]:
+        for button in [self.analyze_btn, self.reset_btn, self.cancel_btn]:
             button_layout.addWidget(button)
 
         for order in [Title, directions, hilbert_parameter_layout, button_layout]:
@@ -1526,6 +1532,9 @@ class HilbertParametersWindow(QtWidgets.QWidget):
 
         if not os.path.exists(self.scoreWindow.source_filename):
             return
+
+        # Save current parameters before analysis
+        self._save_hilbert_params()
 
         for parameter, (i, j) in self.Hilbert_field_positions.items():
 
@@ -1642,6 +1651,56 @@ class HilbertParametersWindow(QtWidgets.QWidget):
         self.scoreWindow.hilbert_thread_worker.start.emit("start")
 
         self.close()
+
+    def reset_to_defaults(self):
+        """Reset all Hilbert parameters to their default values"""
+        default_values = {
+            'Epoch(s):': str(5*60),
+            'Threshold(SD):': '3',
+            'Minimum Time(ms):': '10',
+            'Min Frequency(Hz):': '80',
+            'Max Frequency(Hz):': '500',
+            'Required Peaks:': '6',
+            'Required Peak Threshold(SD):': '2',
+            'Boundary Threshold(Percent)': '30'
+        }
+        
+        for parameter, value in default_values.items():
+            if parameter in self.Hilbert_field_positions:
+                i, j = self.Hilbert_field_positions[parameter]
+                self.hilbert_fields[i, j + 1].setText(value)
+        
+        # Save these defaults to persistent storage
+        self._save_hilbert_params()
+
+    def _save_hilbert_params(self):
+        """Save current Hilbert parameters to persistent storage"""
+        import json
+        try:
+            settings_file = os.path.join(self.scoreWindow.mainWindow.SETTINGS_DIR, 'hilbert_params.json')
+            params = {}
+            for parameter, (i, j) in self.Hilbert_field_positions.items():
+                if parameter != '':
+                    params[parameter] = self.hilbert_fields[i, j + 1].text()
+            with open(settings_file, 'w') as f:
+                json.dump(params, f)
+        except Exception:
+            pass
+
+    def _load_hilbert_params(self):
+        """Load saved Hilbert parameters from persistent storage"""
+        import json
+        try:
+            settings_file = os.path.join(self.scoreWindow.mainWindow.SETTINGS_DIR, 'hilbert_params.json')
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    params = json.load(f)
+                    for parameter, value in params.items():
+                        if parameter in self.Hilbert_field_positions:
+                            i, j = self.Hilbert_field_positions[parameter]
+                            self.hilbert_fields[i, j + 1].setText(value)
+        except Exception:
+            pass
 
     def close_app(self):
 

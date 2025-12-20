@@ -1,6 +1,6 @@
 from .Exporter import Exporter
 from pyqtgraph.parametertree import Parameter
-from pyqtgraph.Qt import QtGui, QtCore, QtSvg, USE_PYSIDE
+from pyqtgraph.Qt import QtGui, QtCore, QtSvg
 import pyqtgraph.functions as fn
 import numpy as np
 
@@ -47,10 +47,14 @@ class ImageExporter(Exporter):
 
     def export(self, fileName=None, toBytes=False, copy=False):
         if fileName is None and not toBytes and not copy:
-            if USE_PYSIDE:
-                filter = ["*."+str(f) for f in QtGui.QImageWriter.supportedImageFormats()]
-            else:
-                filter = ["*."+bytes(f).decode('utf-8') for f in QtGui.QImageWriter.supportedImageFormats()]
+            # Handle both PyQt5 (str) and PySide (bytes) image format formats
+            formats = QtGui.QImageWriter.supportedImageFormats()
+            filter = []
+            for f in formats:
+                if isinstance(f, bytes):
+                    filter.append("*." + f.decode('utf-8'))
+                else:
+                    filter.append("*." + str(f))
             preferred = ['*.png', '*.tif', '*.jpg']
             for p in preferred[::-1]:
                 if p in filter:

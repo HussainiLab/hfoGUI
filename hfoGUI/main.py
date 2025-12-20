@@ -42,6 +42,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         self.scrollbar_thread = QtCore.QThread()
         self.plot_thread = QtCore.QThread()
+        
+        # For saving last session settings
+        self._settings_modified = False
 
         self.home()  # runs the home function
 
@@ -129,7 +132,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         self.Graph_axis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
 
-        self.Graph_axis.setLabel('bottom', "Time", units='ms')  # adds the x label
+        self.Graph_axis.setLabel('bottom', "Time", units='s')  # adds the x label
 
         self.GraphLayout = QtWidgets.QVBoxLayout()
         self.GraphLayout.addLayout(self.main_window_layout)
@@ -204,6 +207,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         center(self)
 
         self.show()
+        
+        # Load last session set filename
+        self._load_last_set_file()
 
         self.set_parameters('Default')
 
@@ -225,7 +231,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
             if index > 0:
                 self.Graph_label.setText(
-                    "<span style='font-size: 12pt'>Time=%0.1f ms, Total Duration: %0.1f sec" % (
+                    "<span style='font-size: 12pt'>Time=%0.3f s, Total Duration: %0.1f s" % (
                     mousePoint.x(), self.source_duration))
             self.mouse_vLine.setPos(mousePoint.x())
 
@@ -246,7 +252,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.score_x1 = float(value1)
         self.score_x2 = float(value2)
         self.lr.show()
-        self.lr.setRegion([value1, value2])
+        self.lr.setRegion([self.score_x1/1000, self.score_x2/1000])
 
     def close_app(self):
 
@@ -269,10 +275,10 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 self.scrollbar.setMaximum(int(self.SourceLength - (self.windowsize/1000 * self.SourceFs)))
             except TypeError:
                 return
-            self.scrollbar.setPageStep(self.windowsize/1000 * self.SourceFs / 3)
-            self.scrollbar.setSingleStep(self.windowsize/1000 * self.SourceFs / 15)
+            self.scrollbar.setPageStep(int(self.windowsize/1000 * self.SourceFs / 3))
+            self.scrollbar.setSingleStep(int(self.windowsize/1000 * self.SourceFs / 15))
             self.scrollbar.setValue(int((self.current_time/1000)*self.SourceFs))
-            self.Graph_axis.setXRange(self.current_time, self.current_time + self.windowsize)
+            self.Graph_axis.setXRange(self.current_time/1000, (self.current_time + self.windowsize)/1000)
             self.Graph_axis.setYRange(0, self.graph_max)
 
     def ScrollGraph(self):
@@ -309,7 +315,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                     pass
                 try:
                     if self.previous_current_time != self.current_time:
-                        self.Graph_axis.setXRange(self.current_time, self.current_time + self.windowsize, padding=0)
+                        self.Graph_axis.setXRange(self.current_time/1000, (self.current_time + self.windowsize)/1000, padding=0)
                         self.previous_current_time = self.current_time
 
                 except AttributeError:
@@ -543,7 +549,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-            self.start_line = pg.InfiniteLine(pos=start_time, angle=90, pen=(255, 0, 0))
+            self.start_line = pg.InfiniteLine(pos=start_time/1000, angle=90, pen=(255, 0, 0))
 
             self.Graph_axis.addItem(self.start_line)
 
@@ -561,7 +567,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-            self.stop_line = pg.InfiniteLine(pos=stop_time, angle=90,
+            self.stop_line = pg.InfiniteLine(pos=stop_time/1000, angle=90,
                                               pen=(0, 255, 0))
 
             self.Graph_axis.addItem(self.stop_line)
@@ -570,6 +576,45 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 self.stop_line.remove()
             except:
                 pass
+
+    def _load_last_set_file(self):
+        """Load the last used set file/folder from settings"""
+        import json
+        settings_file = os.path.join(self.SETTINGS_DIR, 'last_session.json')
+        try:
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    data = json.load(f)
+                    last_file = data.get('last_set_file')
+                    if last_file and os.path.exists(last_file):
+                        for key, val in self.main_window_field_positions.items():
+                            if 'Set Filename' in key:
+                                i_set_text, j_set_text = val
+                                self.main_window_fields[i_set_text, j_set_text + 1].setText(last_file)
+                                break
+        except Exception:
+            pass
+
+    def _save_last_set_file(self):
+        """Save the current set file/folder to settings"""
+        import json
+        try:
+            for key, val in self.main_window_field_positions.items():
+                if 'Set Filename' in key:
+                    i_set_text, j_set_text = val
+                    current_file = self.main_window_fields[i_set_text, j_set_text + 1].text()
+                    if current_file and current_file != 'Import a Set file!':
+                        settings_file = os.path.join(self.SETTINGS_DIR, 'last_session.json')
+                        with open(settings_file, 'w') as f:
+                            json.dump({'last_set_file': current_file}, f)
+                    break
+        except Exception:
+            pass
+
+    def closeEvent(self, event):
+        """Override close event to save settings"""
+        self._save_last_set_file()
+        super().closeEvent(event)
 
 
 def clear_all(main_window, graph_options_window, score_window, tf_plots_window):
@@ -606,17 +651,44 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
     # update the parameters from the Main Window
     main_window.get_parameters()
 
-    # Loading the EEG
+    # Loading from either a Set file or a folder
 
+    # If a folder was provided, find the "top-most" .set file within that folder
+    if isinstance(main_window.current_set_filename, str) and os.path.isdir(main_window.current_set_filename):
+        folder = main_window.current_set_filename
+        try:
+            entries = os.listdir(folder)
+        except (FileNotFoundError, PermissionError):
+            return
+
+        set_candidates = sorted([f for f in entries if f.lower().endswith('.set')])
+        if len(set_candidates) == 0:
+            # No .set found in folder; cannot proceed
+            return
+
+        # Pick the first alphabetically as the "top-most" .set
+        chosen_set = set_candidates[0]
+        chosen_set_path = os.path.join(folder, chosen_set)
+
+        # Update the Main window field to the discovered .set path; will retrigger ImportSet
+        for key, val in main_window.main_window_field_positions.items():
+            if 'Set Filename' in key:
+                i_set_text, j_set_text = val
+                break
+        current_text = main_window.main_window_fields[i_set_text, j_set_text + 1].text()
+        if os.path.realpath(current_text) != os.path.realpath(chosen_set_path):
+            main_window.main_window_fields[i_set_text, j_set_text + 1].setText(os.path.realpath(chosen_set_path))
+        return
+
+    # Otherwise expect a .set or .egf file path
     desired_set_extgension = ['.set', '.egf']
-    if main_window.current_set_filename == '' or all(desired_set_extgension[i] not in main_window.current_set_filename for i in
-                                          range(len(desired_set_extgension))):
+    if main_window.current_set_filename == '' or all(ext not in main_window.current_set_filename.lower() for ext in desired_set_extgension):
         return
 
     set_basename = os.path.basename(os.path.splitext(main_window.current_set_filename)[0])
     set_directory = os.path.dirname(main_window.current_set_filename)
 
-    # finding EEG files and LFP files within the same directory
+    # finding EEG/EGF files and LFP files within the same directory
     try:
         directory_file_list = os.listdir(set_directory)
     except FileNotFoundError:
@@ -648,13 +720,30 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
 
     graph_options_window.source_extensions = []
 
-    # This will add the "sources' for the graph settings window
+    # This will add the "sources" for the graph settings window
     for file in source_files:
         file_extension = os.path.splitext(file)[-1]
         if '.pos' not in file_extension:
             graph_combobox.addItem(file_extension)
         else:
             graph_combobox.addItem('Speed')
+
+    # Auto-select preferred source: EGF if available, else EEG
+    preferred_index = -1
+    egf_index = graph_combobox.findText('.egf')
+    if egf_index != -1:
+        preferred_index = egf_index
+    else:
+        eeg_index = graph_combobox.findText('.eeg')
+        if eeg_index != -1:
+            preferred_index = eeg_index
+    if preferred_index != -1:
+        graph_combobox.setCurrentIndex(preferred_index)
+        # Auto-add the selected source to the graphs list
+        try:
+            graph_options_window.validateSource('add')
+        except Exception:
+            pass
 
     # replace the score with a new proper score file
     score_filename = os.path.join(set_directory, 'HFOScores', set_basename, '%s_HFOScores.txt' % set_basename)

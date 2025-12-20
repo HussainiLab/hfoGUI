@@ -328,6 +328,10 @@ class GraphSettingsWindows(QtWidgets.QWidget):
         self.cell_spike_time_array = []
         self.tetrode_spikes = {}
         self.cell_labels = []
+        self.mark_source = []
+        self.source_values = []
+        self.hilbert_sources = []
+        self.gain_sources = []
 
     def Progress(self, string):
 
@@ -501,10 +505,10 @@ class GraphSettingsWindows(QtWidgets.QWidget):
     def update_plots(self, source, x, y, kwargs):
         if source == 'Main':
 
-            self.mainWindow.Graph_axis.plot(x, y, **kwargs)
+            self.mainWindow.Graph_axis.plot(x/1000, y, **kwargs)
 
-            self.mainWindow.Graph_axis.setXRange(self.mainWindow.current_time, self.mainWindow.current_time +
-                                 self.mainWindow.windowsize, padding=0)
+            self.mainWindow.Graph_axis.setXRange(self.mainWindow.current_time/1000, (self.mainWindow.current_time +
+                                 self.mainWindow.windowsize)/1000, padding=0)
             self.mainWindow.Graph_axis.setClipToView(True)
             self.mainWindow.Graph_axis.showLabel('left', False)
             self.mainWindow.Graph_axis.showAxis('left', False)
@@ -513,14 +517,14 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 self.mainWindow.Graph_axis.setYRange(0, self.mainWindow.graph_max, padding=0)
 
         elif source == 'MarkPeaks':
-            vlines = custom_vlines(x, y[0], y[1], **kwargs)
+            vlines = custom_vlines(x/1000, y[0], y[1], **kwargs)
             self.mainWindow.Graph_axis.addItem(vlines)
 
             self.mainWindow.Graph_axis.setClipToView(True)
         elif source == 'PlotSpikes':
             if 'colors' in kwargs.keys():
                 pen = kwargs['colors']
-            vlines = custom_vlines(x, y[0], y[1], pen=pen, width=2)
+            vlines = custom_vlines(x/1000, y[0], y[1], pen=pen, width=2)
             self.mainWindow.Graph_axis.addItem(vlines)
             self.mainWindow.Graph_axis.setClipToView(True)
 
@@ -1250,6 +1254,15 @@ class GraphSettingsWindows(QtWidgets.QWidget):
 
     def setDefaultOptions(self):
 
+        # First pass: Set Filter Type to Bandpass (this will enable cutoff fields)
+        for option, (i, j) in self.graph_header_option_positions.items():
+            if 'Filter Type' in option:
+                index_value = self.graph_header_option_fields[i, j + 1].findText('Bandpass')
+                if index_value != -1:
+                    self.graph_header_option_fields[i, j + 1].setCurrentIndex(index_value)
+                break
+
+        # Second pass: Set all other defaults including cutoffs
         for option, (i, j) in self.graph_header_option_positions.items():
             if option == '' or any((x in option for x in ['Load Data Profile', 'Save'])):
                 continue
@@ -1259,12 +1272,23 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                 if 'Notch' in option:
                     index_value = self.graph_header_option_fields[i, j + 1].findText('60 Hz')
                     self.graph_header_option_fields[i, j + 1].setCurrentIndex(index_value)
+                elif 'Filter Type' in option:
+                    # Already set in first pass
+                    pass
                 else:
                     self.graph_header_option_fields[i, j + 1].setCurrentIndex(0)
 
             elif 'LineEdit' in str(self.graph_header_option_fields[i, j + 1]):
                 if 'Gain' in option:
                     self.graph_header_option_fields[i, j + 1].setText('1')
+                elif 'Lower Cutoff' in option:
+                    # Set default theta band lower cutoff: 4 Hz
+                    self.graph_header_option_fields[i, j + 1].setEnabled(True)
+                    self.graph_header_option_fields[i, j + 1].setText('4')
+                elif 'Upper Cutoff' in option:
+                    # Set default theta band upper cutoff: 12 Hz
+                    self.graph_header_option_fields[i, j + 1].setEnabled(True)
+                    self.graph_header_option_fields[i, j + 1].setText('12')
 
             elif 'CheckBox' in str(self.graph_header_option_fields[i, j + 1]):
                 if 'Hilbert' in option:

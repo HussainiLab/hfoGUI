@@ -87,7 +87,7 @@ class ChooseFile(QtWidgets.QWidget):
                         0] + " - Choose Set File")  # sets the title of the window
 
             # ---------------- defining instructions -----------------
-            instr = QtWidgets.QLabel("Choose the Set file that you want to analyze!")
+            instr = QtWidgets.QLabel("Choose a Set file or a folder containing it!")
 
             # -------------------------------------------------------
             for key, val in main.main_window_field_positions.items():
@@ -99,7 +99,12 @@ class ChooseFile(QtWidgets.QWidget):
             self.choosebtn = QtWidgets.QPushButton('Choose a Set file!', self)
             self.choosebtn.setToolTip('Click to choose a Set file!')
 
-            self.cur_file_t = QtWidgets.QLabel('Current Set Filepath:')  # the label saying Current Set file
+            # New: allow choosing a folder that contains the .set
+            self.choosefolderbtn = QtWidgets.QPushButton('Choose a Folder', self)
+            self.choosefolderbtn.setToolTip('Click to choose a folder with a .set')
+            self.choosefolderbtn.clicked.connect(lambda: new_Folder(self))
+
+            self.cur_file_t = QtWidgets.QLabel('Current Set/File or Folder:')  # the label saying Current Set file
 
         # replace the main window with the new .set filename
         cur_file_name = main.main_window_fields[i_file, j_file + 1].text()
@@ -122,7 +127,7 @@ class ChooseFile(QtWidgets.QWidget):
         layout_h1.addWidget(self.cur_file_e)
 
         btn_layout = QtWidgets.QHBoxLayout()
-        btn_order = [self.choosebtn, applybtn, self.backbtn]
+        btn_order = [self.choosebtn, self.choosefolderbtn, applybtn, self.backbtn]
 
         for butn in btn_order:
             btn_layout.addWidget(butn)
@@ -183,3 +188,12 @@ def new_File(self, main, source):
         self.cur_file_name = cur_file_name
         self.cur_file_e.setText(cur_file_name)
         return
+
+
+def new_Folder(self):
+    """Choose an existing folder; used for Set selection by folder."""
+    folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select a Folder Containing a .set", '')
+    if folder == '':
+        return
+    self.cur_file_name = folder
+    self.cur_file_e.setText(folder)

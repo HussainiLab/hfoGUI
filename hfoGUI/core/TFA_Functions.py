@@ -160,7 +160,7 @@ def strans(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge,
         # h = np.asarray(h, dtype=np.complex)
         # element-wise multiplication does not work like it does in matlab for
         # complex numbers and real numbers
-        ts_spe = np.asarray(ts_spe, dtype=np.complex)
+        ts_spe = np.asarray(ts_spe, dtype=np.complex128)
         ts_spe[:] = np.multiply(ts_spe, h.flatten())
         timeseries = np.fft.ifft(ts_spe)
 
@@ -184,7 +184,7 @@ def strans(timeseries, minfreq, maxfreq, sample_rate, output_Fs, removeedge,
 
     freq_array = np.arange(output_Fs, (maxfreq - minfreq), output_Fs)
 
-    st_output = np.asarray(st_output, dtype=np.complex)
+    st_output = np.asarray(st_output, dtype=np.complex128)
     for freq in freq_array:
         # print(freq)
         st_output[int(freq / output_Fs), :] = np.fft.ifft(
@@ -263,11 +263,11 @@ def stransform(h, Fs):
     )  # n_half x len(f)
 
     G = np.exp((-W ** 2) / 2)  # Gaussian in freq domain
-    G = np.asarray(G, dtype=np.complex)  # n_half x len(f)
+    G = np.asarray(G, dtype=np.complex128)  # n_half x len(f)
 
     # Compute Toeplitz matrix with the shifted fft(h)
 
-    HW = scipy.linalg.toeplitz(Hft[0, :n_half + 1].T, np.conj(Hft))  # n_half + 1 x len(h)
+    HW = scipy.linalg.toeplitz(np.ravel(Hft[0, :n_half + 1].T), np.ravel(np.conj(Hft)))  # n_half + 1 x len(h)
     # HW = scipy.linalg.toeplitz(Hft[0,:n_half+1].T, Hft)
 
     # exclude the first row, corresponding to zero frequency
