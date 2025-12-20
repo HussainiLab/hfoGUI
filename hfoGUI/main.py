@@ -11,7 +11,7 @@ from core.Score import ScoreWindow
 from core.TFplots import TFPlotWindow
 from core.ChooseFile import ChooseFile, new_File
 
-version = "1.0.10"
+version = "2.0"
 
 _author_ = "Geoffrey Barrett"  # defines myself as the author
 
@@ -75,9 +75,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         # Version information -------------------------------------------
         if getattr(sys, 'frozen', False):
-            version_label = QtWidgets.QLabel(f"hfoGUI - {version}")
+            version_label = QtWidgets.QLabel("hfoGUI - {}".format(version))
         else:
-            version_label = QtWidgets.QLabel(f"hfoGUI - {version}")
+            version_label = QtWidgets.QLabel("hfoGUI - {}".format(version))
 
         # ------------- grid layout ------------------------
 

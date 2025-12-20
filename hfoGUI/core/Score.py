@@ -1041,182 +1041,129 @@ class ScoreWindow(QtWidgets.QWidget):
         df.to_csv(save_filename, sep='\t')
 
 
-def HilbertDetection(self):
-    # self is the scoreWindow
+def hilbert_detect_events(raw_data, Fs, *, epoch, sd_num, min_duration, min_freq, max_freq,
+                          required_peak_number, required_peak_sd=None, boundary_fraction=0.3, verbose=False):
+    """Run the Hilbert-based automatic detection and return an array of [start_ms, stop_ms] rows."""
 
-    if not hasattr(self, 'source_filename'):
-        return
+    if max_freq != Fs / 2 and min_freq != 0:
+        filtered_data = filt.iirfilt(
+            bandtype='band', data=raw_data, Fs=Fs, Wp=min_freq, Ws=max_freq,
+            order=3, automatic=0, Rp=3, As=60, filttype='butter', showresponse=0
+        )
+    elif max_freq == Fs / 2:
+        filtered_data = filt.iirfilt(
+            bandtype='high', data=raw_data, Fs=Fs, Wp=min_freq, Ws=[],
+            order=3, automatic=0, Rp=3, As=60, filttype='butter', showresponse=0
+        )
+    elif min_freq == 0:
+        filtered_data = filt.iirfilt(
+            bandtype='low', data=raw_data, Fs=Fs, Wp=max_freq, Ws=[],
+            order=3, automatic=0, Rp=3, As=60, filttype='butter', showresponse=0
+        )
+    else:
+        filtered_data = raw_data.copy()
 
-    if not os.path.exists(self.source_filename):
-        return
-
-    # get the raw data
-    raw_data, Fs = self.settingsWindow.loaded_sources[self.source_filename]
-
-    # band pass
-
-    if self.max_freq != Fs/2 and self.min_freq != 0:
-        filtered_data = filt.iirfilt(bandtype='band', data=raw_data, Fs=Fs,
-                                                    Wp=self.min_freq, Ws=self.max_freq,
-                                                    order=3, automatic=0, Rp=3, As=60, filttype='butter',
-                                                    showresponse=0)
-    elif self.max_freq == Fs/2:
-        filtered_data = filt.iirfilt(bandtype='high', data=raw_data, Fs=Fs,
-                                               Wp=self.min_freq, Ws=[],
-                                               order=3, automatic=0, Rp=3, As=60, filttype='butter',
-                                               showresponse=0)
-    elif self.min_freq == 0:
-        filtered_data = filt.iirfilt(bandtype='low', data=raw_data, Fs=Fs,
-                                               Wp=self.max_freq, Ws=[],
-                                               order=3, automatic=0, Rp=3, As=60, filttype='butter',
-                                               showresponse=0)
-
-    filtered_data -= np.mean(filtered_data)  # removing DC offset
+    filtered_data -= np.mean(filtered_data)
     t = (1000 / Fs) * np.arange(len(filtered_data))
 
-    # calculate the hilbert transformation of the filtered signal
-    analytic_signal = hilbert(filtered_data)  # time consuming
+    analytic_signal = hilbert(filtered_data)
     hilbert_envelope = np.abs(analytic_signal)
+    rectified_signal = np.abs(filtered_data)
 
-    # rectifies the signal
-    rectified_signal = np.abs(filtered_data)  # this rectifies the signal
-
-    # calculate the standard deviation of 5 minutes of envelope data
-
-    # five_min_window_length = int(Fs * (5 * 60))
-    epoch_window = int(self.epoch*Fs)
-
+    epoch_window = int(epoch * Fs)
     i = 0
-
     EOIs = []
-    latest_stop = - 0.1  # making it a small negative number to begin
-    # boundary_fraction = 0.3
 
-    # epoch length
-    epochs = 0
-    while i <= len(hilbert_envelope):
-        epochs += 1
-        i += epoch_window + 1
+    if verbose:
+        print('Epoch window (samples): %d' % epoch_window)
 
-    i = 0
     while i <= len(hilbert_envelope):
 
-        # iterates through each of the x minute epochs (5 minutes usually)
-        # window_EOIs = []
+        window_t = t[i:i + epoch_window + 1]
+        if len(window_t) == 0:
+            break
 
-        # gets the time of the window
-        window_t = t[i:i+epoch_window+1]
+        if verbose:
+            print('Analyzing times up to %f sec (%f percent of the data)' %
+                  (window_t[-1] / 1000, 100 * window_t[-1] / t[-1]))
 
-        print('Analyzing times up to %f sec (%f percent of the data)' % (window_t[-1] / 1000, 100 * window_t[-1] / t[-1]))
+        window_data = hilbert_envelope[i:i + epoch_window + 1]
 
-        # eoi_rectified = rectified_signal[i:i + epoch_window + 1]  # rectified signal of epoch
+        window_mean = np.mean(window_data)
+        window_std = np.std(window_data)
+        threshold = window_mean + sd_num * window_std
 
-        # gets the window data
-        window_data = hilbert_envelope[i:i+epoch_window+1]
-
-        # set the threshold at the mean of the envelope + 3 SD
-        window_mean = np.mean(window_data)  # mean of the epcoh
-        window_std = np.std(window_data)  # standard deviation of the epoch
-        threshold = window_mean + self.sd_num*window_std  # threshold of the epoch
-
-        # scan for signal events of high amplitude and sufficient duration
         eoi_signal = np.where(window_data >= threshold)[0]
+        
+        # If no samples exceed threshold, skip this epoch
+        if eoi_signal.size == 0:
+            i += epoch_window + 1
+            continue
 
-        # finds the consecutive indices representing periods where the signal was continuously above threshold
-        eoi_indices = find_consec(eoi_signal)
-        ########## where for loop used to be ##############
+        # Ensure indices are integers; if none found, advance to next epoch
+        eoi_indices = [np.asarray(eoi, dtype=int) for eoi in find_consec(eoi_signal)]
+        if len(eoi_indices) == 0:
+            i += epoch_window + 1
+            continue
 
-        eoi_indices = [np.asarray(eoi) for eoi in eoi_indices]
-
-        window_EOIs = np.zeros((len(eoi_indices), 2))  # pre-allocating space for the window_eois
+        window_EOIs = np.zeros((len(eoi_indices), 2))
 
         rejected_eois = []
 
-        peri_boundary_time = 200 / 1000  # sec
-        peri_boundary_samples = int(peri_boundary_time * Fs)
+        peri_boundary_samples = int((200 / 1000) * Fs)
 
-        # getting the data before the first point above threshold of each event to find the start time
-        eoi_find_start_indices = np.asarray([np.arange(eoi[0] - peri_boundary_samples, eoi[0]) for eoi in eoi_indices])
-        eoi_find_start_indices[
-            eoi_find_start_indices < 0] = 0  # any values that are below the 0'th index are just placed at 0
+        eoi_find_start_indices = np.asarray(
+            [np.arange(eoi[0] - peri_boundary_samples, eoi[0]) for eoi in eoi_indices], dtype=int
+        )
+        eoi_find_start_indices[eoi_find_start_indices < 0] = 0
+        eoi_find_start_time = window_t[eoi_find_start_indices]
 
-        eoi_find_start_time = window_t[eoi_find_start_indices]  # converting matrix of indices to matrix of time values
+        row, col = np.where(window_data[eoi_find_start_indices] <= boundary_fraction * threshold)
+        # enforce integer dtype for index arrays
+        row = row.astype(int)
+        col = col.astype(int)
 
-        # finding the indices (row, col) where the data values are below threshold
-        row, col = np.where(window_data[eoi_find_start_indices] <= self.boundary_fraction * threshold)
+        row_consec = np.asarray(find_same_consec(row), dtype=object)
+        # ensure consec_value used for indexing is integer array
+        eoi_starts = [col[np.asarray(consec_value, dtype=int)] for consec_value in row_consec]
+        valid_rows = np.unique(row).astype(int)
 
-        # since they are two arrays, we will separate the columns array into a matrix where each row belongs to each eoi
+        eoi_starts = [
+            eoi_find_start_time[row_index, np.amax(eoi_starts[np.where(valid_rows == row_index)[0][0]])]
+            for row_index in valid_rows
+        ]
 
-        #  starts by finding consecutive indices where the row values are the same
-        row_consec = np.asarray(
-            find_same_consec(row),
-            dtype=object)  # matrix where each row contains the indices of the each eoi within the col array
-
-        # column[i] belongs to row[i] thus once you find the consecutive rows,
-        # their respective columns have the same indices
-        eoi_starts = [col[consec_value] for consec_value in
-                      row_consec]  # contains the column index where the EOI reaches below the threshold
-
-        valid_rows = np.unique(row)
-
-        # for each row (one EOI per row) find the start time
-        # the start of the EOIs are the closest to the threshold (thus should be the maximum value)
-        eoi_starts = [eoi_find_start_time[row_index, np.amax(eoi_starts[np.where(valid_rows == row_index)[0][0]])]
-                      for row_index in valid_rows]
-
-        # set the 1st column of window_EOIs as the start values
         window_EOIs[valid_rows, 0] = eoi_starts
 
-        # find rows that were not included
         rejected_eois.extend(np.setdiff1d(np.arange(len(eoi_indices)), np.unique(row)))
 
-        eoi_find_start_indices = None
-        eoi_find_start_time = None
-        eoi_starts = None
-
-        #  now finding the stop times  #
-
-        # getting the data after the end of each event to find the end time
         eoi_find_stop_indices = np.asarray(
-            [np.arange(eoi[-1] + 1, eoi[-1] + peri_boundary_samples + 1) for eoi in eoi_indices])
+            [np.arange(eoi[-1] + 1, eoi[-1] + peri_boundary_samples + 1) for eoi in eoi_indices], dtype=int
+        )
+        eoi_find_stop_indices[eoi_find_stop_indices > len(window_t) - 1] = len(window_t) - 1
 
-        # any values that are above the max index, are placed at the max index
-        eoi_find_stop_indices[eoi_find_stop_indices > len(window_t) -1] = len(window_t) - 1
+        eoi_find_stop_time = window_t[eoi_find_stop_indices]
 
-        eoi_find_stop_time = window_t[eoi_find_stop_indices]  # converting matrix of indices to matrix of time values
+        row, col = np.where(window_data[eoi_find_stop_indices] <= boundary_fraction * threshold)
+        # enforce integer dtype for index arrays
+        row = row.astype(int)
+        col = col.astype(int)
+        row_consec = np.asarray(find_same_consec(row), dtype=object)
+        # ensure consec_value used for indexing is integer array
+        eoi_stops = [col[np.asarray(consec_value, dtype=int)] for consec_value in row_consec]
+        valid_rows = np.unique(row).astype(int)
 
-        # finding the indices (row, col) where the data values are below threshold
-        row, col = np.where(window_data[eoi_find_stop_indices] <= self.boundary_fraction * threshold)
+        eoi_stops = [
+            eoi_find_stop_time[row_index, np.amin(eoi_stops[np.where(valid_rows == row_index)[0][0]])]
+            for row_index in valid_rows
+        ]
 
-        # since they are two arrays, we will separate the columns array into a matrix where each row belongs to each eoi
-
-        #  starts by finding consecutive indices where the row values are the same
-        row_consec = np.asarray(
-            find_same_consec(row),
-            dtype=object)  # matrix where each row contains the indices of the each eoi within the col array
-
-        eoi_stops = [col[consec_value] for consec_value in
-                     row_consec]  # contains the column index where the EOI reaches below the threshold
-
-        valid_rows = np.unique(row)
-
-        eoi_stops = [eoi_find_stop_time[row_index, np.amin(eoi_stops[np.where(valid_rows == row_index)[0][0]])]
-                     for row_index in valid_rows]
-
-        window_EOIs[np.unique(row), 1] = eoi_stops
+        window_EOIs[np.unique(row).astype(int), 1] = eoi_stops
 
         rejected_eois.extend(np.setdiff1d(np.arange(len(eoi_indices)), np.unique(row)))
-
-        eoi_find_stop_indices = None
-        eoi_find_stop_time = None
-        eoi_stops = None
-        row = None
-        col = None
 
         if rejected_eois != []:
-            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)  # removing rejected EOIs
-
-        # remove overlapping EOIs
+            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)
 
         if len(window_EOIs) == 0:
             i += epoch_window + 1
@@ -1226,37 +1173,29 @@ def HilbertDetection(self):
         latest_index = 0
         rejected_eois = []
 
-        # print(window_EOIs.shape)
-
-        # merging EOIs that overlap
         for eoi_index, eoi in enumerate(window_EOIs):
 
             if eoi_index != 0:
                 within_previous_bool = (eoi <= latest_time)
                 if sum(within_previous_bool) == 2:
-                    # this next eoi is within the previous one
                     rejected_eois.append(eoi_index)
 
                 elif sum(within_previous_bool) == 1:
-                    # then the start is within the previous eoi, but there is a new end
 
-                    # the ending of the previous needs to be extended
-                    window_EOIs[latest_index, 1] = eoi[-1]  # modify the ending of the latest_index
+                    window_EOIs[latest_index, 1] = eoi[-1]
                     rejected_eois.append(eoi_index)
                     latest_time = eoi[-1]
 
                 elif sum(within_previous_bool) == 0:
-                    # this is an acceptable eoi
                     latest_time = eoi[-1]
                     latest_index = eoi_index
 
         if rejected_eois != []:
-            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)  # removing rejected EOIs
+            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)
 
         if len(window_EOIs) == 0:
             i += epoch_window + 1
             continue
-        # merging EOIs within 10ms of each other
 
         latest_time = window_EOIs[0, -1]
         latest_index = 0
@@ -1267,53 +1206,40 @@ def HilbertDetection(self):
             if eoi_index != 0:
 
                 if eoi[0] - latest_time < 10:
-                    # merge EOI's that are less than 10 ms between each other
                     latest_time = eoi[-1]
                     window_EOIs[latest_index, -1] = latest_time
                     rejected_eois.append(eoi_index)
                 else:
-                    # this is an acceptable eoi
                     latest_time = eoi[-1]
                     latest_index = eoi_index
 
         if rejected_eois != []:
-            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)  # removing rejected EOIs
+            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)
 
         if len(window_EOIs) == 0:
             i += epoch_window + 1
             continue
-        # removing EOIs less than X ms
 
-        rejected_eois = np.where(np.diff(window_EOIs) < self.min_duration)[0]
-        if len(rejected_eois > 0):
-            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)  # removing rejected EOIs
-
-        # end of where for loop used to be  #
+        rejected_eois = np.where(np.diff(window_EOIs) < min_duration)[0]
+        if len(rejected_eois) > 0:
+            window_EOIs = np.delete(window_EOIs, rejected_eois, axis=0)
 
         i += epoch_window + 1
 
-        if window_EOIs == []:
-            # then there were no EOIs found
+        if len(window_EOIs) == 0:
             continue
 
-        if window_EOIs.shape[0] == 0:
-            continue
-
-        rejected_sd = ()
-        if self.required_peak_sd is None:
+        if required_peak_sd is None:
             required_peak_threshold = None
         else:
-            required_peak_threshold = window_mean + self.required_peak_sd * window_std
+            required_peak_threshold = window_mean + required_peak_sd * window_std
 
         if len(EOIs) != 0:
 
             if window_EOIs[0, 0] - EOIs[-1, 1] < 10:
-                # merge EOI's that are less than 10 ms between each other
                 EOIs[-1, 1] = window_EOIs[0, 0]
                 window_EOIs = window_EOIs[1:, :]
 
-                # check if the latest event has the desired peaks at the desired threshold of the rectified signal
-                # eoi_data = eoi_rectified[int(Fs * EOIs[-1, 0] / 1000):int(Fs * EOIs[-1, 1] / 1000) + 1]
                 eoi_data = rectified_signal[int(Fs * EOIs[-1, 0] / 1000):int(Fs * EOIs[-1, 1] / 1000) + 1]
 
                 peak_indices = detect_peaks(eoi_data, threshold=0)
@@ -1321,16 +1247,43 @@ def HilbertDetection(self):
                     EOIs = EOIs[:-1, :]
 
             window_EOIs = RejectEOIs(window_EOIs, rectified_signal, Fs, required_peak_threshold,
-                                     self.required_peak_number)
+                                     required_peak_number)
 
             EOIs = np.vstack((EOIs, window_EOIs))
         else:
 
             EOIs = RejectEOIs(window_EOIs, rectified_signal, Fs, required_peak_threshold,
-                              self.required_peak_number)
+                              required_peak_number)
 
-    if EOIs == []:
-        # then there were no EOIs found
+    if len(EOIs) == 0:
+        return np.asarray([])
+
+    return np.asarray(EOIs)
+
+
+def HilbertDetection(self):
+    if not hasattr(self, 'source_filename'):
+        return
+
+    if not os.path.exists(self.source_filename):
+        return
+
+    raw_data, Fs = self.settingsWindow.loaded_sources[self.source_filename]
+
+    EOIs = hilbert_detect_events(
+        raw_data,
+        Fs,
+        epoch=self.epoch,
+        sd_num=self.sd_num,
+        min_duration=self.min_duration,
+        min_freq=self.min_freq,
+        max_freq=self.max_freq,
+        required_peak_number=self.required_peak_number,
+        required_peak_sd=self.required_peak_sd,
+        boundary_fraction=self.boundary_fraction,
+    )
+
+    if EOIs is None or len(EOIs) == 0:
         print('No EOIs were found!')
         return
 
@@ -1347,7 +1300,6 @@ def HilbertDetection(self):
             settings_value = value
 
     for EOI in EOIs:
-        # EOI_item = QtWidgets.QTreeWidgetItem()
         EOI_item = TreeWidgetItem()
 
         new_id = self.createID(self.eoi_method.currentText())
@@ -1356,11 +1308,8 @@ def HilbertDetection(self):
         EOI_item.setText(start_value, str(EOI[0]))
         EOI_item.setText(stop_value, str(EOI[1]))
         EOI_item.setText(settings_value, self.settings_fname)
-        # there is a QTimer error, must add these from the main thread
-        self.AddItemSignal.childAdded.emit(EOI_item)
-        # self.EOI.addTopLevelItem(EOI_item)
 
-    # self.saveAutomaticEOIs()
+        self.AddItemSignal.childAdded.emit(EOI_item)
 
 
 def find_same_consec(data):

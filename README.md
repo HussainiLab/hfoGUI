@@ -20,8 +20,148 @@ Since it utilizes PyQt5 as the GUI framework it should be available to a wide va
 - [User Guide](https://geba.technology/project/hfogui-hfogui-user-guide)
 - Windows ONLY No-Install file. (1) [Download](https://drive.google.com/file/d/1Yz5z3Fn5AA3JPS4_hlFLPap3Omue6Pw7/view?usp=sharing) pre-built hfoGUI zip file, (2) unzip contents to folder and (3) run hfoGUI.exe.
 
+# Usage
+
+## GUI Mode (Default)
+Launch the graphical interface:
+```bash
+python -m hfoGUI
+```
+
+## CLI Mode - Automated Batch Processing
+
+### Hilbert Detection Batch Command
+
+Process HFO detection automatically using the Hilbert envelope method without launching the GUI. Supports both single-file and directory batch processing.
+
+#### Basic Syntax
+```bash
+python -m hfoGUI hilbert-batch --file <path> [options]
+```
+
+#### Single File Processing
+```bash
+python -m hfoGUI hilbert-batch \
+  --file /path/to/data.egf \
+  --set-file /path/to/data.set \
+  --epoch-sec 300 \
+  --threshold-sd 4 \
+  --min-duration-ms 12 \
+  --min-freq 250 \
+  --max-freq 600 \
+  --required-peaks 6 \
+  --required-peak-threshold-sd 3 \
+  --boundary-percent 30
+```
+
+#### Directory Batch Processing
+Recursively process all `.egf` and `.eeg` files in a directory (prioritizes `.egf` when both exist):
+```bash
+python -m hfoGUI hilbert-batch \
+  --file /path/to/data/directory/ \
+  --epoch-sec 180 \
+  --threshold-sd 4 \
+  --min-duration-ms 10 \
+  --min-freq 80 \
+  --max-freq 500 \
+  --required-peaks 6 \
+  --required-peak-threshold-sd 2 \
+  --boundary-percent 25 \
+  --verbose
+```
+
+#### Command-Line Options
+
+**Required:**
+- `--file PATH`: Path to `.eeg`/`.egf` file or directory to process recursively
+
+**Optional Detection Parameters:**
+- `--set-file PATH`: Path to `.set` calibration file (auto-detected if not specified)
+- `--epoch-sec SECONDS`: Epoch window size in seconds (default: 300)
+- `--threshold-sd SD`: Detection threshold in standard deviations (default: 3.0)
+- `--min-duration-ms MS`: Minimum event duration in milliseconds (default: 10.0)
+- `--min-freq HZ`: Minimum frequency for bandpass filter in Hz (default: 80 for EEG, 80 for EGF)
+- `--max-freq HZ`: Maximum frequency for bandpass filter in Hz (default: 125 for EEG, 500 for EGF)
+- `--required-peaks N`: Minimum number of peaks required in event (default: 6)
+- `--required-peak-threshold-sd SD`: Peak detection threshold in SD (default: 2.0)
+- `--no-required-peak-threshold`: Disable peak threshold (count all peaks)
+- `--boundary-percent PERCENT`: Boundary detection threshold as % of main threshold (default: 30%)
+- `--skip-bits2uv`: Skip bits-to-microvolts conversion if `.set` file missing
+- `--output PATH`: Custom output directory (default: `HFOScores/<session>/`)
+- `--verbose`, `-v`: Enable detailed progress logging
+
+#### Output Files
+
+For each processed session, the following files are created:
+- `<session>_HIL.txt`: Tab-separated file with detected HFO events (ID, start time, stop time, settings)
+- `<session>_settings.json`: JSON file with all detection parameters used
+
+Default output location: `HFOScores/<session>/`
+
+#### Examples
+
+**Example 1: Process single file with custom parameters**
+```bash
+python -m hfoGUI hilbert-batch \
+  --file E:\DATA\recording.egf \
+  --epoch-sec 120 \
+  --threshold-sd 5 \
+  --min-freq 200 \
+  --max-freq 600 \
+  --verbose
+```
+
+**Example 2: Batch process directory (recursive)**
+```bash
+python -m hfoGUI hilbert-batch \
+  --file E:\DATA\Experiments\ \
+  --epoch-sec 300 \
+  --threshold-sd 4 \
+  --min-duration-ms 12 \
+  --required-peaks 8 \
+  --verbose
+```
+This will:
+1. Scan all subdirectories for `.egf` and `.eeg` files
+2. Auto-detect matching `.set` files
+3. Process each file independently
+4. Print a summary report showing total files, success/failure counts, and HFO statistics
+
+**Example 3: Process without calibration file**
+```bash
+python -m hfoGUI hilbert-batch \
+  --file recording.egf \
+  --skip-bits2uv \
+  --epoch-sec 180
+```
+
+#### Batch Processing Summary
+
+When processing directories, a summary report is displayed:
+```
+============================================================
+BATCH PROCESSING SUMMARY
+============================================================
+Total files found:     15
+Successfully processed: 14
+Failed:                 1
+Total HFOs detected:    1247
+Average per file:       89.1
+============================================================
+```
+
+#### Notes
+- Directory mode automatically matches `.set` files by basename
+- When both `.eeg` and `.egf` exist with same basename, only `.egf` is processed
+- Large epoch windows (e.g., 300s) work correctly with empty epochs
+- Failed files don't stop batch processing (errors logged, processing continues)
+- Use `--verbose` for per-epoch progress and detailed error traces
+
 # Authors
 * **Geoff Barrett** - [Geoff’s GitHub](https://github.com/GeoffBarrett)
+* **HussainiLab** - [hfoGUI Repository](https://github.com/HussainiLab/hfoGUI)
+
+**Updated (v2.0):** Extended to include batch processing of files and folders without GUI for automated HFO detection using Hilbert method.
 
 # License
 
