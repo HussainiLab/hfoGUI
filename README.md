@@ -28,6 +28,24 @@ Launch the graphical interface:
 python -m hfoGUI
 ```
 
+### Intan RHD → Tint Conversion (GUI)
+
+Convert Intan `.rhd` recordings into Tint `.set` + `.egf`/`.eeg` files directly from the GUI:
+
+- Click "Intan Convert" next to "Import Set" on the main window
+- Choose an `.rhd` file; canceling simply exits without conversion
+- The converter auto-detects related chunked files in the same folder and concatenates them
+- Output is saved next to the chosen file in a subfolder named after the session (e.g., `prefix_YYMMDD_HHMMSS/`)
+- Creates `.egf` when sample rate ≥ 4.8 kHz, otherwise `.eeg`
+- Converts a single amplifier channel (default: `A-000`) for quick testing
+
+Example output:
+```
+Session name: sample_session
+Files saved to: E:\DATA\sample_session
+Files created: sample_session.set, sample_session.egf1, sample_session.egf2, ...
+```
+
 ## CLI Mode - Automated Batch Processing
 
 ### Hilbert Detection Batch Command
@@ -157,11 +175,25 @@ Average per file:       89.1
 - Failed files don't stop batch processing (errors logged, processing continues)
 - Use `--verbose` for per-epoch progress and detailed error traces
 
+## Intan Conversion (CLI)
+
+Run the converter without the GUI. If no file argument is provided, a file picker opens; canceling exits.
+
+```bash
+# As a module
+python -m hfoGUI.intan_rhd_format
+
+# Or direct script path
+python hfoGUI/intan_rhd_format.py E:\DATA\recording_250k_240101_120000.rhd
+```
+
+Outputs are created in a session-named subfolder next to the input `.rhd`. The converter selects channel `A-000` by default and produces `.egf` or `.eeg` depending on input sample rate. A bundled sample file is available at `hfoGUI/core/load_intan_rhd_format/sampledata.rhd` for quick testing.
+
 # Authors
 * **Geoff Barrett** - [Geoff’s GitHub](https://github.com/GeoffBarrett)
 * **HussainiLab** - [hfoGUI Repository](https://github.com/HussainiLab/hfoGUI)
 
-**Updated (v2.0):** Extended to include batch processing of files and folders without GUI for automated HFO detection using Hilbert method.
+**Updated (v3.0):** Added Intan RHD → Tint converter (GUI + CLI) and global UI theme options; batch Hilbert detection retained and improved.
 
 # License
 

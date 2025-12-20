@@ -25,7 +25,7 @@ def background(self):  # defines the background for each window
     if not os.path.exists(self.SETTINGS_DIR):
         os.mkdir(self.SETTINGS_DIR)
 
-    self.setWindowIcon(QtGui.QIcon(os.path.join(self.IMG_DIR, 'hfoGUI2.png')))  # declaring the icon image
+    # Window icon disabled (image assets removed)
     self.deskW, self.deskH = QtWidgets.QDesktopWidget().availableGeometry().getRect()[2:] #gets the window resolution
     self.setGeometry(0, 0, int(self.deskW/2), int(self.deskH/1.5))  # Sets the window size, 800x460 is the size of our window
 

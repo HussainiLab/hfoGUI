@@ -196,7 +196,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 layout.addWidget(order, 0, QtCore.Qt.AlignCenter)
                 layout.addStretch(1)
 
-        layout.addStretch(1)  # adds stretch to put the version info at the buttom
+        layout.addStretch(1)  # adds stretch to put the version info at the bottom
         layout.addWidget(version_label)  # adds the date modification/version number
 
         self.setLayout(layout)
