@@ -22,8 +22,8 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         super(Window, self).__init__()
         background(self)  # acquires some features from the background function we defined earlier
 
-        pg.setConfigOption('background', '#f0f0f0')
-        pg.setConfigOption('foreground', '#202020')
+        pg.setConfigOption('background', '#ffffff')
+        pg.setConfigOption('foreground', '#000000')
 
         if getattr(sys, 'frozen', False):
             # frozen
@@ -49,6 +49,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.lr = None
 
         self.loaded_data = {}
+        self.current_set_filename = ''  # Initialize to avoid AttributeError
 
         # ------ buttons + widgets -----------------------------
 
@@ -130,6 +131,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.Graph_axis.setMouseEnabled(x=False, y=False)  # disables the mouse interactions
 
         self.Graph_axis.setLabel('bottom', "Time", units='s')  # adds the x label
+        
+        # Add gridlines in light color
+        self.Graph_axis.showGrid(x=True, y=True, alpha=0.3)
 
         self.GraphLayout = QtWidgets.QVBoxLayout()
         self.GraphLayout.addLayout(self.main_window_layout)
@@ -145,12 +149,12 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         # -------------- graph settigns -------------------------------
 
         self.graph_parameters = [
-            'Window Size(ms):', '', 'Current Time(ms):', '', 'Start Time(ms):', '', 'Stop Time(ms):', '', 'Plot Spikes', ''
+            'Window Size(ms):', '', 'Current Time(ms):', '', 'Start Time(ms):', '', 'Stop Time(ms):', '', 'Plot Spikes', '', 'Update', ''
         ]
         self.graph_parameter_fields = {}
         self.graph_parameter_field_positions = {}
 
-        positions = [(i, j) for i in range(1) for j in range(10)]
+        positions = [(i, j) for i in range(1) for j in range(12)]
         self.graph_parameter_layout = QtWidgets.QGridLayout()
 
         for (i, j), parameter in zip(positions, self.graph_parameters):
@@ -162,6 +166,12 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
                 if 'Plot' in parameter:
                     self.graph_parameter_fields[i, j+1] = QtWidgets.QCheckBox(parameter)
+                    self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j + 1], i, j + 1)
+                
+                elif 'Update' in parameter:
+                    self.update_spikes_btn = QtWidgets.QPushButton(parameter)
+                    self.update_spikes_btn.setToolTip("Refresh spike display for current time window")
+                    self.graph_parameter_fields[i, j+1] = self.update_spikes_btn
                     self.graph_parameter_layout.addWidget(self.graph_parameter_fields[i, j + 1], i, j + 1)
 
                 else:
@@ -205,8 +215,8 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         self.show()
         
-        # Load last session set filename
-        self._load_last_set_file()
+        # Do not auto-load last session set filename on startup
+        # self._load_last_set_file()
 
         self.set_parameters('Default')
 
@@ -320,6 +330,30 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             except TypeError:
                 pass
 
+    def update_spikes_for_window(self):
+        """Refresh spike display for the current time window"""
+        if not self.GraphLoaded:
+            return
+        # Clear previous spikes from the graph
+        # This will trigger a replot of only spikes in the current window
+        self.Graph_axis.clear()
+        # Re-add the label and vline
+        self.Graph_axis.addItem(self.Graph_label)
+        self.vb = self.Graph_axis.vb
+        self.mouse_vLine = pg.InfiniteLine(angle=90)
+        self.Graph_axis.addItem(self.mouse_vLine, ignoreBounds=True)
+        # Re-add gridlines
+        self.Graph_axis.showGrid(x=True, y=True, alpha=0.3)
+        # Trigger a replot by calling the Plot function
+        try:
+            # Access the GraphSettingsWindow instance and replot
+            from core.GraphSettings import GraphSettingsWindows
+            # Find the settings window - it's created in main()
+            # For now, we'll just clear and let the user manually trigger via Plot button
+            pass
+        except:
+            pass
+
     def get_window_indices(self):
         self.get_parameters()  # sets the current time
 
@@ -354,7 +388,12 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             elif 'LFP Filename' in parameter:
                 self.cur_lfp_filename = self.main_window_fields[position[0], position[1] + 1].text()
             elif 'Set Filename' in parameter:
-                self.current_set_filename = self.main_window_fields[position[0], position[1] + 1].text()
+                text = self.main_window_fields[position[0], position[1] + 1].text()
+                # Don't set if it's the placeholder text or empty
+                if text and text != 'Import a Set file!' and text.strip():
+                    self.current_set_filename = text.strip()
+                else:
+                    self.current_set_filename = ''
 
     def get_scroll_values(self):
         try:
@@ -370,9 +409,10 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             self.windowsize = None
 
     def get_current_time(self):
+        # Use Current Time field
         try:
             self.current_time = float(self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].text())
-        except ValueError:
+        except Exception:
             self.current_time = None
 
     def get_window_size(self):
@@ -395,7 +435,6 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                     self.windowsize = float(self.graph_parameter_fields[position[0], position[1] + 1].text())
                 except ValueError:
                     self.windowsize = None
-
             elif 'Current Time' in parameter:
                 if self.graph_parameter_fields[position[0], position[1] + 1].text() == '':
                     continue
@@ -539,6 +578,64 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 start_time = temp[1]
                 stop_time = temp[0]
                 temp = None
+
+        # Update the view/window based on provided Start/Stop
+        try:
+            if start_time is not None and stop_time is not None:
+                # Set X range directly to [start, stop]
+                self.Graph_axis.setXRange(start_time/1000, stop_time/1000, padding=0)
+                # Sync fields: Current Time = start, Window Size = stop - start
+                try:
+                    self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].setText(str(start_time))
+                except Exception:
+                    pass
+                try:
+                    win_ms = max(stop_time - start_time, 0)
+                    self.graph_parameter_fields[self.i_windowsize, self.j_windowsize + 1].setText(str(win_ms))
+                except Exception:
+                    pass
+                # Also move the scrollbar accordingly
+                try:
+                    self.scrollbar.setValue(int(start_time / 1000 * self.SourceFs))
+                except Exception:
+                    pass
+
+            elif start_time is not None and stop_time is None:
+                # Move window to start; keep current window size
+                if self.windowsize is None:
+                    # If windowsize missing, do not attempt range update
+                    pass
+                else:
+                    self.Graph_axis.setXRange(start_time/1000, (start_time + self.windowsize)/1000, padding=0)
+                # Sync current time field and scrollbar
+                try:
+                    self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].setText(str(start_time))
+                except Exception:
+                    pass
+                try:
+                    self.scrollbar.setValue(int(start_time / 1000 * self.SourceFs))
+                except Exception:
+                    pass
+
+            elif start_time is None and stop_time is not None:
+                # Align window end at stop; compute start from window size
+                if self.windowsize is None:
+                    pass
+                else:
+                    start_calc = max(stop_time - self.windowsize, 0)
+                    self.Graph_axis.setXRange(start_calc/1000, stop_time/1000, padding=0)
+                    # Sync current time field and scrollbar
+                    try:
+                        self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].setText(str(start_calc))
+                    except Exception:
+                        pass
+                    try:
+                        self.scrollbar.setValue(int(start_calc / 1000 * self.SourceFs))
+                    except Exception:
+                        pass
+        except Exception:
+            # Safeguard: don't break if SourceFs/Graph not ready
+            pass
 
         if start_time is not None:
 
@@ -830,6 +927,10 @@ def run():
     main_w.main_window_fields[i_set_btn, j_set_btn].clicked.connect(lambda: raise_w(chooseSet, main_w, source='Set'))
     main_w.main_window_fields[i_intan_btn, j_intan_btn].clicked.connect(run_intan_converter)
     main_w.graph_parameter_fields[i_plot, j_plot+1].stateChanged.connect(lambda: plotCheckChanged(main_w, setting_w))
+
+    # Connect Update Spikes button
+    if hasattr(main_w, 'update_spikes_btn'):
+        main_w.update_spikes_btn.clicked.connect(lambda: plotCheckChanged(main_w, setting_w))
 
     chooseSet.choosebtn.clicked.connect(lambda: new_File(chooseSet, main_w, "Set"))
     chooseSet.backbtn.clicked.connect(lambda: raise_w(main_w, chooseSet))
