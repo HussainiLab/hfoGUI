@@ -620,10 +620,19 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                     value = self.graph_header_option_fields[i, j + 1].currentText()
                 else:
                     value = self.graph_header_option_fields[i, j + 1].text()
+                # Check if set filename is valid
+                if (not hasattr(self.mainWindow, 'current_set_filename') or 
+                    not self.mainWindow.current_set_filename or 
+                    self.mainWindow.current_set_filename == '' or
+                    self.mainWindow.current_set_filename == 'Import a Set file!'):
+                    '''the current_set_filename attribute doesnt exist yet, is empty, or is placeholder text'''
+                    self.mainWindow.ErrorDialogue.myGUI_signal.emit("ImportSetError")
+                    return
+                
                 try:
                     session_path, set_filename = os.path.split(self.mainWindow.current_set_filename)
-                except AttributeError:
-                    '''the current_set_filename attribute doesnt exist yet, thus none was set'''
+                except (AttributeError, ValueError):
+                    '''Failed to parse set filename'''
                     self.mainWindow.ErrorDialogue.myGUI_signal.emit("ImportSetError")
                     return
 
@@ -1130,13 +1139,13 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         tetrode_file = os.path.join(session_path, '%s.%d' % (session, tetrode_number))
 
                         if not os.path.exists(tetrode_file):
-                            pass
+                            continue
 
-                        cut_file = os.path.join(tetrode_file, ''.join(
+                        cut_file = os.path.join(session_path, ''.join(
                             [os.path.splitext(os.path.basename(tetrode_file))[0], '_', str(tetrode_number), '.cut']))
 
                         if not os.path.exists(cut_file):
-                            pass
+                            continue
 
                         units = find_unit([tetrode_file])
 
@@ -1159,7 +1168,9 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                             cell_spike_times = 1000 * spike_times[np.where((units == cell_num))[1]]
 
                             cell_spike_times_array.append(cell_spike_times)
-                            spike_color_list.append(self.spike_colors[cell_num-1])
+                            # Use modulo to wrap around if cell_num exceeds available colors
+                            color_index = (cell_num - 1) % len(self.spike_colors)
+                            spike_color_list.append(self.spike_colors[color_index])
 
                         self.tetrode_spikes[tetrode_number] = {'times': cell_spike_times_array,
                                                                'colors': spike_color_list}
@@ -1171,24 +1182,72 @@ class GraphSettingsWindows(QtWidgets.QWidget):
                         cell_spike_times_array = None
                         spike_color_list = None
 
+                    # If no .cut files were found, uncheck and show popup
+                    if self.tetrode_spikes == {}:
+                        # Find and uncheck the Plot Spikes checkbox
+                        for key, val in self.graph_header_option_positions.items():
+                            if 'Plot' in key and 'Spike' in key:
+                                i, j = val
+                                checkbox = self.graph_header_option_fields.get((i, j + 1))
+                                if checkbox:
+                                    checkbox.blockSignals(True)
+                                    checkbox.setChecked(False)
+                                    checkbox.blockSignals(False)
+                                break
+                        
+                        # Show popup message
+                        QtWidgets.QMessageBox.information(
+                            self.mainWindow,
+                            "No Cut Files Available",
+                            "No spike sorting (.cut) files were found in the data directory.\n"
+                            "Plot Spikes has been unchecked."
+                        )
+
                 raster_spike_height = (0.30 / 4) * graph_y_range
                 current_cell_raster_minimum = 0  # start at 0 amplitude
+
+                # Get window boundaries in milliseconds for filtering spikes
+                window_start_ms = self.mainWindow.current_time
+                window_end_ms = self.mainWindow.current_time + self.mainWindow.windowsize
 
                 for tetrode_key in sorted(self.tetrode_spikes.keys()):
                     spike_times = self.tetrode_spikes[tetrode_key]['times']
                     spike_colors = self.tetrode_spikes[tetrode_key]['colors']
                     for i in range(len(spike_times)):
                         cell_spike_times = spike_times[i]
+                        
+                        # Filter spikes to only those within the current window
+                        if len(cell_spike_times) > 0:
+                            window_mask = (cell_spike_times >= window_start_ms) & (cell_spike_times <= window_end_ms)
+                            cell_spike_times = cell_spike_times[window_mask]
 
-                        # plots the vertical lines, the InfiniteLine does not plot an array like vlines,
-                        # so we need to do a for loop, this method could be significantly slower
-                        self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
-                            [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
-                                                   {'colors': spike_colors[i]})
+                        # Only plot if there are spikes in this window
+                        if len(cell_spike_times) > 0:
+                            # plots the vertical lines, the InfiniteLine does not plot an array like vlines,
+                            # so we need to do a for loop, this method could be significantly slower
+                            self.newData.mysignal.emit('PlotSpikes', cell_spike_times, np.array(
+                                [current_cell_raster_minimum, current_cell_raster_minimum + raster_spike_height]),
+                                                       {'colors': spike_colors[i]})
 
                     current_cell_raster_minimum += raster_spike_height  # increment the minimum height
 
                 previous_source_max = current_cell_raster_minimum + raster_spike_height
+
+                # Add Y-axis labels for each tetrode row (1-4)
+                # Calculate the tick positions at the center of each tetrode band
+                tetrode_count = len(sorted(self.tetrode_spikes.keys()))
+                y_ticks = []
+                y_tick_labels = []
+                
+                for row in range(1, tetrode_count + 1):
+                    # Center of each band is at (row - 0.5) * raster_spike_height
+                    tick_pos = (row - 0.5) * raster_spike_height
+                    y_ticks.append((tick_pos, str(row)))
+                
+                if y_ticks:
+                    # Set custom Y-axis ticks and labels
+                    ax = self.mainWindow.Graph_axis
+                    ax.getAxis('left').setTicks([y_ticks])
 
         self.progress_value += 25
         self.progress_signal.mysignal.emit('setValue', {'value': self.progress_value})
@@ -1690,13 +1749,13 @@ class custom_vlines(pg.GraphicsObject):
         self.setValue(int(self.value()))
 
     def setPen(self, *args, **kwargs):
-        self.pen = pg.fn.mkPen(*args, **kwargs)
+        self.pen = pg.mkPen(*args, **kwargs)
         if not self.mouseHovering:
             self.currentPen = self.pen
             self.update()
 
     def setHoverPen(self, *args, **kwargs):
-        self.hoverPen = pg.fn.mkPen(*args, **kwargs)
+        self.hoverPen = pg.mkPen(*args, **kwargs)
 
     def boundingRect(self):
         br = self.viewRect()

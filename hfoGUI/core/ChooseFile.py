@@ -165,9 +165,9 @@ class ChooseFile(QtWidgets.QWidget):
                 if 'Set Filename' in key:
                     i_file, j_file = val
 
-        # replace the main window with the new .set filename
-        self.backbtn.animateClick()
+        # replace the main window with the new .set filename FIRST, then close
         main.main_window_fields[i_file, j_file + 1].setText(os.path.realpath(self.cur_file_name))
+        self.backbtn.animateClick()
 
 
 def new_File(self, main, source):
