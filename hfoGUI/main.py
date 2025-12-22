@@ -582,23 +582,38 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         # Update the view/window based on provided Start/Stop
         try:
             if start_time is not None and stop_time is not None:
-                # Set X range directly to [start, stop]
-                self.Graph_axis.setXRange(start_time/1000, stop_time/1000, padding=0)
-                # Sync fields: Current Time = start, Window Size = stop - start
-                try:
-                    self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1].setText(str(start_time))
-                except Exception:
-                    pass
-                try:
-                    win_ms = max(stop_time - start_time, 0)
-                    self.graph_parameter_fields[self.i_windowsize, self.j_windowsize + 1].setText(str(win_ms))
-                except Exception:
-                    pass
-                # Also move the scrollbar accordingly
-                try:
-                    self.scrollbar.setValue(int(start_time / 1000 * self.SourceFs))
-                except Exception:
-                    pass
+                # When both start and stop are provided, center the view on the event
+                # but keep the user's window size unchanged
+                event_center = (start_time + stop_time) / 2
+                
+                # Set the graph range using the existing window size centered on the event
+                if self.windowsize is not None and self.windowsize > 0:
+                    # Center the view on the event within the window size
+                    view_start = max(event_center - self.windowsize / 2, 0)
+                    view_end = view_start + self.windowsize
+                    self.Graph_axis.setXRange(view_start/1000, view_end/1000, padding=0)
+                    
+                    # Update scrollbar to match the centered view
+                    try:
+                        self.scrollbar.setValue(int(view_start / 1000 * self.SourceFs))
+                    except Exception:
+                        pass
+                    
+                    # Update Current Time field without triggering signals (use blockSignals)
+                    try:
+                        current_time_field = self.graph_parameter_fields[self.i_current_time, self.j_current_time + 1]
+                        current_time_field.blockSignals(True)
+                        current_time_field.setText(str(view_start))
+                        current_time_field.blockSignals(False)
+                    except Exception:
+                        pass
+                else:
+                    # Fallback: if no window size set, show the entire event
+                    self.Graph_axis.setXRange(start_time/1000, stop_time/1000, padding=0)
+                    try:
+                        self.scrollbar.setValue(int(start_time / 1000 * self.SourceFs))
+                    except Exception:
+                        pass
 
             elif start_time is not None and stop_time is None:
                 # Move window to start; keep current window size

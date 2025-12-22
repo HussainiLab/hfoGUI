@@ -295,6 +295,13 @@ class ScoreWindow(QtWidgets.QWidget):
         self.hilbert_thread = QtCore.QThread()
         self.setLayout(window_layout)
 
+    def closeEvent(self, event):
+        """Override close event to properly stop worker threads"""
+        if hasattr(self, 'hilbert_thread') and self.hilbert_thread.isRunning():
+            self.hilbert_thread.quit()
+            self.hilbert_thread.wait(1000)  # Wait up to 1 second for thread to finish
+        super().closeEvent(event)
+
     def initialize_attributes(self):
         self.IDs = []
 
@@ -1262,54 +1269,63 @@ def hilbert_detect_events(raw_data, Fs, *, epoch, sd_num, min_duration, min_freq
 
 
 def HilbertDetection(self):
-    if not hasattr(self, 'source_filename'):
+    try:
+        if not hasattr(self, 'source_filename'):
+            return
+
+        if not os.path.exists(self.source_filename):
+            return
+
+        raw_data, Fs = self.settingsWindow.loaded_sources[self.source_filename]
+
+        EOIs = hilbert_detect_events(
+            raw_data,
+            Fs,
+            epoch=self.epoch,
+            sd_num=self.sd_num,
+            min_duration=self.min_duration,
+            min_freq=self.min_freq,
+            max_freq=self.max_freq,
+            required_peak_number=self.required_peak_number,
+            required_peak_sd=self.required_peak_sd,
+            boundary_fraction=self.boundary_fraction,
+        )
+
+        if EOIs is None or len(EOIs) == 0:
+            print('No EOIs were found!')
+            return
+
+        self.events_detected.setText(str(len(EOIs)))
+
+        for key, value in self.EOI_headers.items():
+            if 'ID' in key:
+                ID_value = value
+            elif 'Start' in key:
+                start_value = value
+            elif 'Stop' in key:
+                stop_value = value
+            elif 'Settings' in key:
+                settings_value = value
+
+        for EOI in EOIs:
+            EOI_item = TreeWidgetItem()
+
+            new_id = self.createID(self.eoi_method.currentText())
+            self.IDs.append(new_id)
+            EOI_item.setText(ID_value, new_id)
+            EOI_item.setText(start_value, str(EOI[0]))
+            EOI_item.setText(stop_value, str(EOI[1]))
+            EOI_item.setText(settings_value, self.settings_fname)
+
+            self.AddItemSignal.childAdded.emit(EOI_item)
+    except KeyboardInterrupt:
+        print('Hilbert detection was interrupted by user')
         return
-
-    if not os.path.exists(self.source_filename):
+    except Exception as e:
+        print(f'Error during Hilbert detection: {e}')
+        import traceback
+        traceback.print_exc()
         return
-
-    raw_data, Fs = self.settingsWindow.loaded_sources[self.source_filename]
-
-    EOIs = hilbert_detect_events(
-        raw_data,
-        Fs,
-        epoch=self.epoch,
-        sd_num=self.sd_num,
-        min_duration=self.min_duration,
-        min_freq=self.min_freq,
-        max_freq=self.max_freq,
-        required_peak_number=self.required_peak_number,
-        required_peak_sd=self.required_peak_sd,
-        boundary_fraction=self.boundary_fraction,
-    )
-
-    if EOIs is None or len(EOIs) == 0:
-        print('No EOIs were found!')
-        return
-
-    self.events_detected.setText(str(len(EOIs)))
-
-    for key, value in self.EOI_headers.items():
-        if 'ID' in key:
-            ID_value = value
-        elif 'Start' in key:
-            start_value = value
-        elif 'Stop' in key:
-            stop_value = value
-        elif 'Settings' in key:
-            settings_value = value
-
-    for EOI in EOIs:
-        EOI_item = TreeWidgetItem()
-
-        new_id = self.createID(self.eoi_method.currentText())
-        self.IDs.append(new_id)
-        EOI_item.setText(ID_value, new_id)
-        EOI_item.setText(start_value, str(EOI[0]))
-        EOI_item.setText(stop_value, str(EOI[1]))
-        EOI_item.setText(settings_value, self.settings_fname)
-
-        self.AddItemSignal.childAdded.emit(EOI_item)
 
 
 def find_same_consec(data):
@@ -1645,6 +1661,11 @@ class HilbertParametersWindow(QtWidgets.QWidget):
             with open(self.scoreWindow.settings_fname, 'w') as f:
                 json.dump(settings, f)
 
+        # Check if thread is already running, stop it first
+        if self.scoreWindow.hilbert_thread.isRunning():
+            self.scoreWindow.hilbert_thread.quit()
+            self.scoreWindow.hilbert_thread.wait()
+        
         self.scoreWindow.hilbert_thread.start()
         self.scoreWindow.hilbert_thread_worker = Worker(HilbertDetection, self.scoreWindow)
         self.scoreWindow.hilbert_thread_worker.moveToThread(self.scoreWindow.hilbert_thread)
