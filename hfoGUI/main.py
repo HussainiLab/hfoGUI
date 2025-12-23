@@ -809,8 +809,45 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             )
             return
 
+        # Detect arena shape
+        import cv2
+        
+        # Filter NaNs
+        valid_mask = np.isfinite(x) & np.isfinite(y)
+        x_clean = x[valid_mask]
+        y_clean = y[valid_mask]
 
-        title_ppm = f".pos Trajectory  (PPM: {ppm_value})"
+        arena_shape = "box" # Default
+        circularity = 0.0
+
+        if x_clean.size > 0:
+            # Normalize to 0-1000 range for sufficient precision
+            x_min_val, x_max_val = np.min(x_clean), np.max(x_clean)
+            y_min_val, y_max_val = np.min(y_clean), np.max(y_clean)
+            
+            if (x_max_val - x_min_val) > 0 and (y_max_val - y_min_val) > 0:
+                scale = 1000.0
+                x_scaled = ((x_clean - x_min_val) / (x_max_val - x_min_val) * scale).astype(np.float32)
+                y_scaled = ((y_clean - y_min_val) / (y_max_val - y_min_val) * scale).astype(np.float32)
+                
+                points = np.column_stack((x_scaled, y_scaled))
+                hull = cv2.convexHull(points)
+                
+                area = cv2.contourArea(hull)
+                perimeter = cv2.arcLength(hull, True)
+                
+                if perimeter > 0:
+                    circularity = 4 * np.pi * area / (perimeter ** 2)
+                    # Square is pi/4 ~= 0.785
+                    # Circle is 1.0
+                    # Threshold of 0.89 separates them well
+                    if circularity > 0.89:
+                        arena_shape = "circle"
+                    else:
+                        arena_shape = "box"
+
+
+        title_ppm = f".pos Trajectory  (PPM: {ppm_value}, Arena: {arena_shape}, Circ: {circularity:.2f})"
         if self.pos_plot_window is None:
             self.pos_plot_window = QtWidgets.QDialog(self)
             self.pos_plot_window.setWindowTitle(title_ppm)
@@ -835,32 +872,88 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.pos_plot_widget.setAspectLocked(True)
         self.pos_plot_widget.enableAutoRange()
 
-        # --- Add 4x4 bin grid overlay and bin counts ---
-        n_bins = 4
-        # Compute bin edges
-        x_min, x_max = np.nanmin(x), np.nanmax(x)
-        y_min, y_max = np.nanmin(y), np.nanmax(y)
-        x_edges = np.linspace(x_min, x_max, n_bins + 1)
-        y_edges = np.linspace(y_min, y_max, n_bins + 1)
-        # Draw grid lines
-        for xe in x_edges:
-            self.pos_plot_widget.addLine(x=xe, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
-        for ye in y_edges:
-            self.pos_plot_widget.addLine(y=ye, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
-
-        # Bin the trajectory points and events
-        H_traj, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
-        
         H_events = None
-        if event_x is not None and event_y is not None:
-            H_events, _, _ = np.histogram2d(event_x, event_y, bins=[x_edges, y_edges])
+        H_traj = None
 
-        # Optionally, annotate bin counts
-        for i in range(n_bins):
-            for j in range(n_bins):
-                # Center of each bin
-                xc = (x_edges[i] + x_edges[i+1]) / 2
-                yc = (y_edges[j] + y_edges[j+1]) / 2
+        if arena_shape == "circle":
+            # Polar binning for circle: 2 rings (equal area) x 8 sectors = 16 bins
+            r = np.sqrt(x**2 + y**2)
+            theta = np.arctan2(y, x) # -pi to pi
+            
+            max_r = np.nanmax(r) if r.size > 0 else 1.0
+            
+            # Equal area rings: r_i = R * sqrt(i/N)
+            n_rings = 2
+            r_edges = max_r * np.sqrt(np.linspace(0, 1, n_rings + 1))
+            
+            n_sectors = 8
+            theta_edges = np.linspace(-np.pi, np.pi, n_sectors + 1)
+            
+            # Histogram r vs theta
+            H_traj, _, _ = np.histogram2d(r, theta, bins=[r_edges, theta_edges])
+            
+            if event_x is not None and event_y is not None:
+                r_ev = np.sqrt(event_x**2 + event_y**2)
+                theta_ev = np.arctan2(event_y, event_x)
+                H_events, _, _ = np.histogram2d(r_ev, theta_ev, bins=[r_edges, theta_edges])
+
+            # Draw circles (rings)
+            for rad in r_edges[1:]:
+                circle = QtWidgets.QGraphicsEllipseItem(-rad, -rad, rad*2, rad*2)
+                circle.setPen(pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+                self.pos_plot_widget.addItem(circle)
+            
+            # Draw lines (sectors)
+            for ang in theta_edges:
+                x2, y2 = max_r * np.cos(ang), max_r * np.sin(ang)
+                self.pos_plot_widget.plot([0, x2], [0, y2], pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+
+            # Annotate
+            for i in range(n_rings):
+                for j in range(n_sectors):
+                    r_inner, r_outer = r_edges[i], r_edges[i+1]
+                    th_inner, th_outer = theta_edges[j], theta_edges[j+1]
+                    
+                    # Centroid for text
+                    r_c = (r_inner + r_outer) / 2
+                    th_c = (th_inner + th_outer) / 2
+                    xc = r_c * np.cos(th_c)
+                    yc = r_c * np.sin(th_c)
+                    
+                    text_str = ""
+                    if H_events is not None:
+                        count_ev = int(H_events[i, j])
+                        if count_ev > 0: text_str = str(count_ev)
+                    else:
+                        count_traj = int(H_traj[i, j])
+                        if count_traj > 0: text_str = str(count_traj)
+                    
+                    if text_str:
+                        text = pg.TextItem(text=text_str, color=(200, 0, 0), anchor=(0.5, 0.5))
+                        self.pos_plot_widget.addItem(text)
+                        text.setPos(xc, yc)
+
+        else:
+            # Box/Unknown: 4x4 Rectangular grid
+            n_bins = 4
+            x_min, x_max = np.nanmin(x), np.nanmax(x)
+            y_min, y_max = np.nanmin(y), np.nanmax(y)
+            x_edges = np.linspace(x_min, x_max, n_bins + 1)
+            y_edges = np.linspace(y_min, y_max, n_bins + 1)
+            
+            for xe in x_edges:
+                self.pos_plot_widget.addLine(x=xe, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+            for ye in y_edges:
+                self.pos_plot_widget.addLine(y=ye, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+
+            H_traj, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
+            if event_x is not None and event_y is not None:
+                H_events, _, _ = np.histogram2d(event_x, event_y, bins=[x_edges, y_edges])
+
+            for i in range(n_bins):
+                for j in range(n_bins):
+                    xc = (x_edges[i] + x_edges[i+1]) / 2
+                    yc = (y_edges[j] + y_edges[j+1]) / 2
                 
                 text_str = ""
                 if H_events is not None:
@@ -894,47 +987,16 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                                                           os.path.join(start_dir, "binned_events.csv"), 
                                                           "CSV (*.csv)")
             if path:
-                # Save as matrix: rows=Y (top to bottom), cols=X (left to right)
-                # H_events indices: [x_bin, y_bin]
-                # Transpose to [y_bin, x_bin]
-                # Flip UD to have y_max at top (row 0)
-                matrix = np.flipud(H_events.T)
+                if arena_shape == "circle":
+                    # Rows: Rings (Inner->Outer), Cols: Sectors (-pi -> pi)
+                    matrix = H_events
+                else:
+                    # Rows: Y (Top->Bottom), Cols: X (Left->Right)
+                    matrix = np.flipud(H_events.T)
+                
                 np.savetxt(path, matrix, delimiter=",", fmt='%d')
 
         self.save_bins_btn.clicked.connect(_save_bins)
-
-
-        # Alternative: Use image moments to assess shape
-        import cv2
-        import matplotlib.pyplot as plt
-        # Normalize and scale trajectory to image
-        img_size = 256
-        x_img = ((x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)) * (img_size - 1)).astype(np.int32)
-        y_img = ((y - np.nanmin(y)) / (np.nanmax(y) - np.nanmin(y)) * (img_size - 1)).astype(np.int32)
-        img = np.zeros((img_size, img_size), dtype=np.uint8)
-        for xi, yi in zip(x_img, y_img):
-            img[yi, xi] = 255
-        # Find contours
-        contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        arena_shape = "unknown"
-        if contours:
-            cnt = max(contours, key=cv2.contourArea)
-            area = cv2.contourArea(cnt)
-            perimeter = cv2.arcLength(cnt, True)
-            # Circularity: 4*pi*area / perimeter^2
-            if perimeter > 0:
-                circularity = 4 * np.pi * area / (perimeter ** 2)
-                if circularity > 0.7:
-                    arena_shape = "circle"
-                else:
-                    arena_shape = "box"
-        # Optionally, plot for debugging
-        # plt.imshow(img, cmap='gray')
-        # plt.title(f"Arena shape: {arena_shape}, circularity={circularity:.2f}")
-        # plt.show()
-
-        # Show arena shape in window title
-        self.pos_plot_window.setWindowTitle(f".pos Trajectory  (PPM: {ppm_value}, Arena: {arena_shape})")
 
         self.pos_plot_window.show()
         self.pos_plot_window.raise_()
@@ -1112,13 +1174,15 @@ def ImportSet(main_window, graph_options_window, score_window, tf_plots_window):
 
     # Auto-select preferred source: EGF if available, else EEG
     preferred_index = -1
-    egf_index = graph_combobox.findText('.egf')
-    if egf_index != -1:
-        preferred_index = egf_index
-    else:
-        eeg_index = graph_combobox.findText('.eeg')
-        if eeg_index != -1:
-            preferred_index = eeg_index
+    
+    for ext in ['.egf', '.eeg']:
+        for i in range(graph_combobox.count()):
+            if ext in graph_combobox.itemText(i).lower():
+                preferred_index = i
+                break
+        if preferred_index != -1:
+            break
+            
     if preferred_index != -1:
         graph_combobox.setCurrentIndex(preferred_index)
         # Auto-add the selected source to the graphs list
