@@ -787,6 +787,33 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.pos_plot_widget.setAspectLocked(True)
         self.pos_plot_widget.enableAutoRange()
 
+        # --- Add 4x4 bin grid overlay and bin counts ---
+        n_bins = 4
+        # Compute bin edges
+        x_min, x_max = np.nanmin(x), np.nanmax(x)
+        y_min, y_max = np.nanmin(y), np.nanmax(y)
+        x_edges = np.linspace(x_min, x_max, n_bins + 1)
+        y_edges = np.linspace(y_min, y_max, n_bins + 1)
+        # Draw grid lines
+        for xe in x_edges:
+            self.pos_plot_widget.addLine(x=xe, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+        for ye in y_edges:
+            self.pos_plot_widget.addLine(y=ye, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
+
+        # Bin the trajectory points
+        H, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
+        # Optionally, annotate bin counts
+        for i in range(n_bins):
+            for j in range(n_bins):
+                # Center of each bin
+                xc = (x_edges[i] + x_edges[i+1]) / 2
+                yc = (y_edges[j] + y_edges[j+1]) / 2
+                count = int(H[i, j])
+                if count > 0:
+                    text = pg.TextItem(text=str(count), color=(200, 0, 0), anchor=(0.5, 0.5))
+                    self.pos_plot_widget.addItem(text)
+                    text.setPos(xc, yc)
+
 
 
         # Alternative: Use image moments to assess shape
