@@ -817,6 +817,8 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             layout = QtWidgets.QVBoxLayout(self.pos_plot_window)
             self.pos_plot_widget = pg.PlotWidget()
             layout.addWidget(self.pos_plot_widget)
+            self.save_bins_btn = QtWidgets.QPushButton("Save Binned Events")
+            layout.addWidget(self.save_bins_btn)
         else:
             self.pos_plot_window.setWindowTitle(title_ppm)
 
@@ -846,20 +848,60 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         for ye in y_edges:
             self.pos_plot_widget.addLine(y=ye, pen=pg.mkPen(color=(0, 0, 255, 100), width=1, style=QtCore.Qt.DashLine))
 
-        # Bin the trajectory points
-        H, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
+        # Bin the trajectory points and events
+        H_traj, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
+        
+        H_events = None
+        if event_x is not None and event_y is not None:
+            H_events, _, _ = np.histogram2d(event_x, event_y, bins=[x_edges, y_edges])
+
         # Optionally, annotate bin counts
         for i in range(n_bins):
             for j in range(n_bins):
                 # Center of each bin
                 xc = (x_edges[i] + x_edges[i+1]) / 2
                 yc = (y_edges[j] + y_edges[j+1]) / 2
-                count = int(H[i, j])
-                if count > 0:
-                    text = pg.TextItem(text=str(count), color=(200, 0, 0), anchor=(0.5, 0.5))
+                
+                text_str = ""
+                if H_events is not None:
+                    count_ev = int(H_events[i, j])
+                    if count_ev > 0:
+                        text_str = str(count_ev)
+                else:
+                    # Fallback to trajectory samples if no events
+                    count_traj = int(H_traj[i, j])
+                    if count_traj > 0:
+                        text_str = str(count_traj)
+
+                if text_str:
+                    text = pg.TextItem(text=text_str, color=(200, 0, 0), anchor=(0.5, 0.5))
                     self.pos_plot_widget.addItem(text)
                     text.setPos(xc, yc)
 
+        # Connect save button
+        try:
+            self.save_bins_btn.clicked.disconnect()
+        except TypeError:
+            pass
+
+        def _save_bins():
+            if H_events is None:
+                QtWidgets.QMessageBox.warning(self, "Save Error", "No events detected to save.")
+                return
+            
+            start_dir = os.path.dirname(self.current_set_filename) if hasattr(self, 'current_set_filename') and self.current_set_filename else ""
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(self.pos_plot_window, "Save Binned Events", 
+                                                          os.path.join(start_dir, "binned_events.csv"), 
+                                                          "CSV (*.csv)")
+            if path:
+                # Save as matrix: rows=Y (top to bottom), cols=X (left to right)
+                # H_events indices: [x_bin, y_bin]
+                # Transpose to [y_bin, x_bin]
+                # Flip UD to have y_max at top (row 0)
+                matrix = np.flipud(H_events.T)
+                np.savetxt(path, matrix, delimiter=",", fmt='%d')
+
+        self.save_bins_btn.clicked.connect(_save_bins)
 
 
         # Alternative: Use image moments to assess shape
