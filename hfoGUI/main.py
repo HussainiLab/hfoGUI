@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import functools
+from core.animal_tracking import grab_position_data
 from core.GUI_Utils import background, Communicate, CustomViewBox, center, Worker, raise_w
 from core.GraphSettings import GraphSettingsWindows
 from core.Score import ScoreWindow
@@ -38,6 +39,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         self.scrollbar_thread = QtCore.QThread()
         self.plot_thread = QtCore.QThread()
+
+        self.pos_plot_window = None
+        self.pos_plot_widget = None
         
         # For saving last session settings
         self._settings_modified = False
@@ -56,6 +60,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.graph_settings_btn = QtWidgets.QPushButton("Graph Settings", self)
         self.graph_settings_btn.setToolTip("Click if you want to add/remove waveforms, and edit the graph")
 
+        self.plot_pos_btn = QtWidgets.QPushButton("Plot Trajectory", self)
+        self.plot_pos_btn.setToolTip("Plot trajectory from a .pos file")
+
         self.score_btn = QtWidgets.QPushButton("Score", self)
         self.score_btn.setToolTip("Click if you want to score the EEG file")
 
@@ -69,7 +76,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         btn_layout = QtWidgets.QHBoxLayout()
 
-        button_order = [self.graph_settings_btn, self.score_btn, self.TF_btn, quit_btn]
+        button_order = [self.graph_settings_btn, self.plot_pos_btn, self.score_btn, self.TF_btn, quit_btn]
         for button in button_order:
             btn_layout.addWidget(button)
 
@@ -688,6 +695,136 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             except:
                 pass
 
+    def plot_pos_trajectory(self):
+        """Plot only the trajectory from an Axona .pos file in a simple 2D view."""
+        def _get_ppm_from_graph_settings():
+            fallback_ppm = 511
+            gs = getattr(self, 'graph_settings_window', None)
+            if gs is None:
+                return fallback_ppm
+
+            for option, (i, j) in gs.graph_header_option_positions.items():
+                if 'PPM (pixels/meter)' in option:
+                    try:
+                        text = gs.graph_header_option_fields[i, j + 1].text()
+                    except Exception:
+                        return fallback_ppm
+
+                    if text is None:
+                        return fallback_ppm
+                    text = text.strip()
+                    if not text:
+                        return fallback_ppm
+                    try:
+                        ppm_val = float(text)
+                        return ppm_val
+                    except ValueError:
+                        return fallback_ppm
+            return fallback_ppm
+
+        ppm_value = _get_ppm_from_graph_settings()
+
+        # Try to infer the .pos path from the current .set, otherwise ask the user
+        inferred_path = None
+        if getattr(self, 'current_set_filename', ''):
+            base = os.path.splitext(self.current_set_filename)[0]
+            candidate = f"{base}.pos"
+            if os.path.exists(candidate):
+                inferred_path = candidate
+
+        if inferred_path is None:
+            start_dir = os.path.dirname(self.current_set_filename) if getattr(self, 'current_set_filename', '') else ''
+            pos_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "Select .pos file",
+                start_dir,
+                "Axona pos (*.pos)"
+            )
+            if not pos_path:
+                return
+        else:
+            pos_path = inferred_path
+
+        try:
+            pos_x, pos_y, _, _ = grab_position_data(pos_path, ppm_value)
+        except Exception as exc:  # pylint: disable=broad-except
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Position Plot Error",
+                f"Failed to load trajectory from:\n{pos_path}\n\n{exc}"
+            )
+            return
+
+        x = np.asarray(pos_x).flatten()
+        y = np.asarray(pos_y).flatten()
+
+        if x.size == 0 or y.size == 0:
+            QtWidgets.QMessageBox.information(
+                self,
+                "Position Plot",
+                "No position samples were found in the selected .pos file."
+            )
+            return
+
+
+        title_ppm = f".pos Trajectory  (PPM: {ppm_value})"
+        if self.pos_plot_window is None:
+            self.pos_plot_window = QtWidgets.QDialog(self)
+            self.pos_plot_window.setWindowTitle(title_ppm)
+            layout = QtWidgets.QVBoxLayout(self.pos_plot_window)
+            self.pos_plot_widget = pg.PlotWidget()
+            layout.addWidget(self.pos_plot_widget)
+        else:
+            self.pos_plot_window.setWindowTitle(title_ppm)
+
+
+        self.pos_plot_widget.clear()
+        # Plot trajectory in gray
+        self.pos_plot_widget.plot(x, y, pen=pg.mkPen(color=(150, 150, 150), width=1))
+        self.pos_plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        self.pos_plot_widget.setLabel('bottom', 'X (cm)')
+        self.pos_plot_widget.setLabel('left', 'Y (cm)')
+        self.pos_plot_widget.setAspectLocked(True)
+        self.pos_plot_widget.enableAutoRange()
+
+
+
+        # Alternative: Use image moments to assess shape
+        import cv2
+        import matplotlib.pyplot as plt
+        # Normalize and scale trajectory to image
+        img_size = 256
+        x_img = ((x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x)) * (img_size - 1)).astype(np.int32)
+        y_img = ((y - np.nanmin(y)) / (np.nanmax(y) - np.nanmin(y)) * (img_size - 1)).astype(np.int32)
+        img = np.zeros((img_size, img_size), dtype=np.uint8)
+        for xi, yi in zip(x_img, y_img):
+            img[yi, xi] = 255
+        # Find contours
+        contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        arena_shape = "unknown"
+        if contours:
+            cnt = max(contours, key=cv2.contourArea)
+            area = cv2.contourArea(cnt)
+            perimeter = cv2.arcLength(cnt, True)
+            # Circularity: 4*pi*area / perimeter^2
+            if perimeter > 0:
+                circularity = 4 * np.pi * area / (perimeter ** 2)
+                if circularity > 0.7:
+                    arena_shape = "circle"
+                else:
+                    arena_shape = "box"
+        # Optionally, plot for debugging
+        # plt.imshow(img, cmap='gray')
+        # plt.title(f"Arena shape: {arena_shape}, circularity={circularity:.2f}")
+        # plt.show()
+
+        # Show arena shape in window title
+        self.pos_plot_window.setWindowTitle(f".pos Trajectory  (PPM: {ppm_value}, Arena: {arena_shape})")
+
+        self.pos_plot_window.show()
+        self.pos_plot_window.raise_()
+        self.pos_plot_window.activateWindow()
+
     def _load_last_set_file(self):
         """Load the last used set file/folder from settings"""
         import json
@@ -928,6 +1065,7 @@ def run():
             i_current, j_current = val
 
     setting_w = GraphSettingsWindows(main_w)  # calling the graph settings window
+    main_w.graph_settings_window = setting_w
 
     score_w = ScoreWindow(main_w, setting_w)
 
@@ -939,6 +1077,7 @@ def run():
 
     main_w.score_btn.clicked.connect(lambda: raise_w(score_w, main_w))
     main_w.graph_settings_btn.clicked.connect(lambda: raise_w(setting_w, main_w))
+    main_w.plot_pos_btn.clicked.connect(main_w.plot_pos_trajectory)
     main_w.main_window_fields[i_set_btn, j_set_btn].clicked.connect(lambda: raise_w(chooseSet, main_w, source='Set'))
     main_w.main_window_fields[i_intan_btn, j_intan_btn].clicked.connect(run_intan_converter)
     main_w.graph_parameter_fields[i_plot, j_plot+1].stateChanged.connect(lambda: plotCheckChanged(main_w, setting_w))
