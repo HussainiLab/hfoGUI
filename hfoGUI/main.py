@@ -695,8 +695,15 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             except:
                 pass
 
-    def plot_pos_trajectory(self):
-        """Plot only the trajectory from an Axona .pos file in a simple 2D view."""
+    def plot_pos_trajectory(self, event_points=None):
+        """Plot only the trajectory from an Axona .pos file in a simple 2D view.
+        Optionally overlay detected event points as red dots.
+        Args:
+            event_points: Optional, Nx2 array-like of (x, y) event positions to overlay.
+        """
+        if isinstance(event_points, bool):
+            event_points = None
+
         def _get_ppm_from_graph_settings():
             fallback_ppm = 511
             gs = getattr(self, 'graph_settings_window', None)
@@ -746,7 +753,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
             pos_path = inferred_path
 
         try:
-            pos_x, pos_y, _, _ = grab_position_data(pos_path, ppm_value)
+            pos_x, pos_y, pos_t, _ = grab_position_data(pos_path, ppm_value)
         except Exception as exc:  # pylint: disable=broad-except
             QtWidgets.QMessageBox.critical(
                 self,
@@ -757,6 +764,42 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         x = np.asarray(pos_x).flatten()
         y = np.asarray(pos_y).flatten()
+        t_pos = np.asarray(pos_t).flatten()
+
+        # If event_points are given in time indices, map to x/y
+        event_x = event_y = None
+
+        # If no events provided, try to fetch from ScoreWindow (Automated Detection)
+        if event_points is None and hasattr(self, 'score_window'):
+            eoi_list = []
+            if self.score_window.EOI.topLevelItemCount() > 0:
+                # Find start time column
+                start_col = -1
+                for key, val in self.score_window.EOI_headers.items():
+                    if 'Start Time' in key:
+                        start_col = val
+                        break
+                
+                if start_col != -1:
+                    for i in range(self.score_window.EOI.topLevelItemCount()):
+                        item = self.score_window.EOI.topLevelItem(i)
+                        try:
+                            # Time is in ms, convert to seconds
+                            t_ms = float(item.text(start_col))
+                            eoi_list.append(t_ms / 1000.0)
+                        except ValueError:
+                            continue
+            
+            if eoi_list and t_pos.size > 0:
+                # Map event times to closest position indices
+                indices = np.searchsorted(t_pos, eoi_list)
+                indices = np.clip(indices, 0, len(t_pos) - 1)
+                event_points = np.column_stack((x[indices], y[indices]))
+
+        if event_points is not None:
+            event_points = np.asarray(event_points)
+            if event_points.ndim == 2 and event_points.shape[1] == 2:
+                event_x, event_y = event_points[:, 0], event_points[:, 1]
 
         if x.size == 0 or y.size == 0:
             QtWidgets.QMessageBox.information(
@@ -781,6 +824,9 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
         self.pos_plot_widget.clear()
         # Plot trajectory in gray
         self.pos_plot_widget.plot(x, y, pen=pg.mkPen(color=(150, 150, 150), width=1))
+        # Overlay detected event points as red dots
+        if event_x is not None and event_y is not None:
+            self.pos_plot_widget.plot(event_x, event_y, pen=None, symbol='o', symbolBrush=(255,0,0), symbolSize=10, name='Detected Events')
         self.pos_plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.pos_plot_widget.setLabel('bottom', 'X (cm)')
         self.pos_plot_widget.setLabel('left', 'Y (cm)')
@@ -1095,6 +1141,7 @@ def run():
     main_w.graph_settings_window = setting_w
 
     score_w = ScoreWindow(main_w, setting_w)
+    main_w.score_window = score_w
 
     chooseSet = ChooseFile(main_w, 'Set')
 
