@@ -18,7 +18,7 @@ Since it utilizes PyQt5 as the GUI framework it should be available to a wide va
 # Project Documentation
 - [Installation](https://geba.technology/project/hfogui)
 - [User Guide](https://geba.technology/project/hfogui-hfogui-user-guide)
-- Windows ONLY No-Install file. (1) [Download](https://drive.google.com/file/d/1Yz5z3Fn5AA3JPS4_hlFLPap3Omue6Pw7/view?usp=sharing) pre-built hfoGUI zip file, (2) unzip contents to folder and (3) run hfoGUI.exe.
+- Windows No-Install file (OLD version). (1) [Download](https://drive.google.com/file/d/1Yz5z3Fn5AA3JPS4_hlFLPap3Omue6Pw7/view?usp=sharing) pre-built hfoGUI zip file, (2) unzip contents to folder and (3) run hfoGUI.exe. Use below method for latest version.
 
 # Usage
 
