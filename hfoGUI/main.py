@@ -819,6 +819,7 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
 
         arena_shape = "box" # Default
         circularity = 0.0
+        extent = 0.0
 
         if x_clean.size > 0:
             # Normalize to 0-1000 range for sufficient precision
@@ -838,16 +839,19 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                 
                 if perimeter > 0:
                     circularity = 4 * np.pi * area / (perimeter ** 2)
+                    # Calculate extent (Area / Bounding Box Area)
+                    # Since we scaled to 0-1000, bounding box area is 1000*1000 = 1,000,000
+                    extent = area / 1000000.0
+
                     # Square is pi/4 ~= 0.785
                     # Circle is 1.0
-                    # Threshold of 0.89 separates them well
-                    if circularity > 0.89:
+                    # Threshold of 0.89 separates them well, but checking extent helps distinguish rounded boxes
+                    if circularity > 0.89 and extent < 0.85:
                         arena_shape = "circle"
                     else:
                         arena_shape = "box"
 
-
-        title_ppm = f".pos Trajectory  (PPM: {ppm_value}, Arena: {arena_shape}, Circ: {circularity:.2f})"
+        title_ppm = f".pos Trajectory  (PPM: {ppm_value}, Arena: {arena_shape}, Circ: {circularity:.2f}, Extent: {extent:.2f})"
         if self.pos_plot_window is None:
             self.pos_plot_window = QtWidgets.QDialog(self)
             self.pos_plot_window.setWindowTitle(title_ppm)
@@ -955,21 +959,21 @@ class Window(QtWidgets.QWidget):  # defines the window class (main window)
                     xc = (x_edges[i] + x_edges[i+1]) / 2
                     yc = (y_edges[j] + y_edges[j+1]) / 2
                 
-                text_str = ""
-                if H_events is not None:
-                    count_ev = int(H_events[i, j])
-                    if count_ev > 0:
-                        text_str = str(count_ev)
-                else:
-                    # Fallback to trajectory samples if no events
-                    count_traj = int(H_traj[i, j])
-                    if count_traj > 0:
-                        text_str = str(count_traj)
+                    text_str = ""
+                    if H_events is not None:
+                        count_ev = int(H_events[i, j])
+                        if count_ev > 0:
+                            text_str = str(count_ev)
+                    else:
+                        # Fallback to trajectory samples if no events
+                        count_traj = int(H_traj[i, j])
+                        if count_traj > 0:
+                            text_str = str(count_traj)
 
-                if text_str:
-                    text = pg.TextItem(text=text_str, color=(200, 0, 0), anchor=(0.5, 0.5))
-                    self.pos_plot_widget.addItem(text)
-                    text.setPos(xc, yc)
+                    if text_str:
+                        text = pg.TextItem(text=text_str, color=(200, 0, 0), anchor=(0.5, 0.5))
+                        self.pos_plot_widget.addItem(text)
+                        text.setPos(xc, yc)
 
         # Connect save button
         try:
