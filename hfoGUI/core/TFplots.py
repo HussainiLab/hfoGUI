@@ -316,7 +316,7 @@ class TFPlotWindow(QtWidgets.QWidget):
             if self.settingsWindow.selected_time is None:
                 return
 
-            selected_time = np.rint(self.Fs * self.settingsWindow.selected_time / 1000)  # index instead of milliseconds
+            selected_time = np.rint(self.Fs * self.settingsWindow.selected_time)  # index instead of seconds
 
             if selected_time is None:
                 return
@@ -544,7 +544,7 @@ class TFPlotWindow(QtWidgets.QWidget):
         elif source == 'Raw':
             # update the raw graph (top graph)
             self.RawGraphAxis.plot(x/1000, y, clear=True, pen=(0, 0, 255), width=3)
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(0, 0, 0))
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(0, 0, 0))
             self.RawGraphAxis.addItem(vLine,  ignoreBounds=True)
             self.RawGraphAxis.setXRange(np.amin(x)/1000, np.amax(x)/1000, padding=0)
             self.RawGraphAxis.setLabel('left', "Amplitude", units='uV')
@@ -554,7 +554,7 @@ class TFPlotWindow(QtWidgets.QWidget):
             # update the filtered graph (middle graph)
             self.FilteredGraphAxis.plot(x/1000, y[0, :], clear=True, pen=(0, 0, 255), width=3)  # plotting filtered data
             self.FilteredGraphAxis.plot(x/1000, y[1, :], pen=(255, 0, 0), width=3)  # plotting the hilbert transform
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(0, 0, 0))
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(0, 0, 0))
             self.FilteredGraphAxis.addItem(vLine, ignoreBounds=True)
             self.FilteredGraphAxis.setXRange(np.amin(x)/1000, np.amax(x)/1000, padding=0)
             self.FilteredGraphAxis.setLabel('left', "Amplitude", units='uV')
@@ -583,7 +583,7 @@ class TFPlotWindow(QtWidgets.QWidget):
             # hm.setLookupTable(lut)
             self.STransformGraphAxis.addItem(hm)
 
-            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time/1000, angle=90, movable=False, pen=(255, 255, 255))
+            vLine = pg.InfiniteLine(pos=self.settingsWindow.selected_time, angle=90, movable=False, pen=(255, 255, 255))
             vLine.setPen(style=QtCore.Qt.DashLine)
             hm.setRect(QtCore.QRectF(np.amin(x)/1000, np.amin(freq), (np.amax(x)-np.amin(x))/1000, np.amax(freq)-np.amin(freq)))
 
